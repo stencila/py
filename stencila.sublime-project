@@ -1,4 +1,10 @@
 {
+
+	"settings": {
+		"tab_size": 2,
+		"translate_tabs_to_spaces": true
+	},
+
 	"folders":
 	[
 		{
@@ -9,6 +15,14 @@
 	"build_systems":
 	[
 		{
+			"name": "Test all: run all tests",
+			"cmd":
+			[
+				"make", "test"
+			],
+			"working_dir": "."
+		},
+		{
 			"name": "Test one: run an individual test file",
 			"cmd":
 			[
@@ -16,9 +30,6 @@
 			],
 			"working_dir": "."
 		},
-	],
-
-    "tab_size": 4,
-    "translate_tabs_to_spaces": false
+	]
 }
 

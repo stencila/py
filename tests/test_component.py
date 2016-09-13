@@ -38,7 +38,7 @@ class ReadWritePathTest(unittest.TestCase):
         c = Component('foo/bar')  # This is OK
 
         with self.assertRaises(Exception):
-            c.read('foo/bar')  # This explicit read is not
+            c.read()  # This explicit read is not OK
 
     def test_write_nonexistant(self):
         dir = os.path.join(tempfile.mkdtemp(), 'foo')
