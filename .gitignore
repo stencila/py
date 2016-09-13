@@ -12,3 +12,6 @@
 /.coverage
 /coverage.xml
 /.cache
+
+# Editor files
+*.sublime-workspace

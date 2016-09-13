@@ -1,0 +1,24 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+
+	"build_systems":
+	[
+		{
+			"name": "Test one: run an individual test file",
+			"cmd":
+			[
+				"python", "-m", "pytest", "tests/$file_name"
+			],
+			"working_dir": "."
+		},
+	],
+
+    "tab_size": 4,
+    "translate_tabs_to_spaces": false
+}
+

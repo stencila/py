@@ -18,4 +18,14 @@ Run tests with coverage                                 | `make cover` | `tox -e
 Build                                                   | `make build` | `./setup.py bdist_wheel`
 Clean                                                   | `make clean` | `rm -rf ...`
 
-Unit tests live in the `tests` folder. We use [`tox`](https://tox.readthedocs.io/en/latest/) for automation and standardisation of testing across Python versions. Running `make test` (or just `tox`) will build the package and run the test suite under Python 2.7 and 3.5. For test coverage the test suite is run under Python 2.7 only. Coverage is run on the build at https://travis-ci.org/stencila/py and displayed at https://codecov.io/gh/stencila/py.
+Unit tests live in the `tests` folder. During development a its handy to have `pytest` installed and run individual test file from the root directory like this:
+
+   python -m pytest tests/test_component.py
+
+Or run all the tests:
+
+   python -m pytest tests
+
+For the automation and standardisation of testing across Python versions we use [`tox`](https://tox.readthedocs.io/en/latest/). Running `make test` (or just `tox`) will build the package and run the test suite under Python 2.7 and 3.5. 
+
+For test coverage, the test suite is run under Python 2.7 only. Coverage is run on the build at https://travis-ci.org/stencila/py and displayed at https://codecov.io/gh/stencila/py.
