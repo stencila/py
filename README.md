@@ -6,6 +6,14 @@
  
 Stencila components for Python
 
+### Install
+
+Right now this package isn't on PyPI, but you can install it from here:
+
+```
+pip install --user https://github.com/stencila/py/archive/master.zip
+```
+
 ### Development
 
 Most development tasks can be run using the usual Python tool commands or `make` recipes which wrap them.
@@ -18,13 +26,17 @@ Run tests with coverage                                 | `make cover` | `tox -e
 Build                                                   | `make build` | `./setup.py bdist_wheel`
 Clean                                                   | `make clean` | `rm -rf ...`
 
-Unit tests live in the `tests` folder. During development a its handy to have `pytest` installed and run individual test file from the root directory like this:
+During development a its handy to have `pytest` installed and run individual test file from the root directory like this:
 
-   python -m pytest tests/test_component.py
+```
+python -m pytest tests/test_component.py
+```
 
 Or run all the tests:
 
-   python -m pytest tests
+```
+python -m pytest tests
+```
 
 For the automation and standardisation of testing across Python versions we use [`tox`](https://tox.readthedocs.io/en/latest/). Running `make test` (or just `tox`) will build the package and run the test suite under Python 2.7 and 3.5. 
 
