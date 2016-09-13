@@ -7,10 +7,20 @@ from stencila import Component, components
 
 class ConstructTest(unittest.TestCase):
 
-    def test(self):
+    def test_new(self):
         c = Component()
         self.assertTrue(isinstance(c, Component))
         self.assertTrue(c in components)
+
+    def test_del(self):
+        l1 = len(components)
+        c = Component()
+        l2 = len(components)
+        c.__del__()
+        l3 = len(components)
+
+        self.assertEqual(l2, l1+1)
+        self.assertEqual(l3, l2-1)
 
 
 class ReadWritePathTest(unittest.TestCase):
