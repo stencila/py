@@ -1,0 +1,14 @@
+# Sandbox
+/.sandbox
+
+# Byte-compiled / optimized / DLL files
+*.py[cod]
+
+# Build artifacts
+/build
+/dist
+/stencila.egg-info
+/.tox
+/.coverage
+/coverage.xml
+/.cache
