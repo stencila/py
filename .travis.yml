@@ -4,15 +4,19 @@ python:
   - "3.4"
   - "3.5"
 
+cache: pip
+
 install:
-  - make setup
-  - pip install --user tox-travis
+  - pip install setuptools wheel tox tox-travis
 
 script:
-  - make cover
+  - tox
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then \
+      tox -e cover & - sed -i "s!.tox/cover/lib/python2.7/site-packages/stencila/!!g" coverage.xml; \
+      bash <(curl -s https://codecov.io/bash); \
+    fi
 
 notifications:
   webhooks:
