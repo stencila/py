@@ -10,8 +10,8 @@ Stencila components for Python
 
 Most development tasks can be run using the usual Python tool commands or `make` recipes which wrap them.
 
-Task                                                    | `make`          Python tooling      
-------------------------------------------------------- |--------------|--------------------------|
+Task                                                    | `make`       |   Python tooling      
+------------------------------------------------------- |--------------|--------------------------
 Install dependencies                                    | `make setup` | `pip install ...`       
 Run tests                                               | `make test`  | `tox`       
 Run tests with coverage                                 | `make cover` | `tox -e cover`              
