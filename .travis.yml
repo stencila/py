@@ -5,11 +5,11 @@ python:
   - "3.5"
 
 install:
-	- make setup
+  - make setup
   - pip install --user tox-travis
 
 script:
-	- make cover
+  - make cover
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
