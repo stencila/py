@@ -1,7 +1,7 @@
 all: setup build
 
 setup:
-	pip install --user setuptools wheel tox twine
+	pip install --user setuptools wheel tox twine sphinx sphinx-autobuild
 
 build:
 	python setup.py bdist_wheel
@@ -14,12 +14,15 @@ ifeq ($(OS), win)
 	pip install --user --upgrade --force-reinstall $(ls -rt dist/*.whl | tail -n 1)
 	python tests/tests.py
 else
-	~/.local/bin/tox
+	tox
 endif
 
 cover:
-	~/.local/bin/tox -e cover
+	tox -e cover
 	sed -i "s!.tox/cover/lib/python2.7/site-packages/stencila/!!g" coverage.xml
+
+doc:
+	$(MAKE) -C docs html
 
 clean:
 	rm -rf build dist stencila.egg-info .tox .cache .coverage coverage.xml

@@ -6,6 +6,7 @@
 
 # Build artifacts
 /build
+/docs/_build
 /dist
 /stencila.egg-info
 /.tox
