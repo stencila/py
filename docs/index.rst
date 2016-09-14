@@ -11,7 +11,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-
+   component
+   document
+   sheet
+   context
+   session
 
 Indices and tables
 ==================

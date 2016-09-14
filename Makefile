@@ -21,8 +21,9 @@ cover:
 	tox -e cover
 	sed -i "s!.tox/cover/lib/python2.7/site-packages/stencila/!!g" coverage.xml
 
-doc:
+docs:
 	$(MAKE) -C docs html
+.PHONY: docs
 
 clean:
 	rm -rf build dist stencila.egg-info .tox .cache .coverage coverage.xml
