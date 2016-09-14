@@ -1,70 +1,67 @@
-import unittest
 import tempfile
 import os
+
+import pytest
 
 from stencila import Component, components
 
 
-class ConstructTest(unittest.TestCase):
-
-    def test_new(self):
-        c = Component()
-        self.assertTrue(isinstance(c, Component))
-        self.assertTrue(c in components)
-
-    def test_del(self):
-        l1 = len(components)
-        c = Component()
-        l2 = len(components)
-        c.__del__()
-        l3 = len(components)
-
-        self.assertEqual(l2, l1+1)
-        self.assertEqual(l3, l2-1)
+def test_new():
+    c = Component()
+    assert isinstance(c, Component)
+    assert c in components
 
 
-class ReadWritePathTest(unittest.TestCase):
+def test_del():
+    l1 = len(components)
+    c = Component()
+    l2 = len(components)
+    c.__del__()
+    l3 = len(components)
 
-    def test_normal(self):
-        p1 = tempfile.mkstemp()[1]
-        p2 = tempfile.mkstemp()[1]
-
-        c = Component(p1)
-        self.assertEqual(c.path(), p1)
-
-        c.read()
-        self.assertEqual(c.path(), p1)
-
-        c.read(p2)
-        self.assertEqual(c.path(), p2)
-
-        c.write()
-        self.assertEqual(c.path(), p2)
-
-        c.write(p1)
-        self.assertEqual(c.path(), p1)
-
-    def test_read_error(self):
-        c = Component('foo/bar')  # This is OK
-
-        with self.assertRaises(Exception):
-            c.read()  # This explicit read is not OK
-
-    def test_write_nonexistant(self):
-        dir = os.path.join(tempfile.mkdtemp(), 'foo')
-
-        file = os.path.join(dir, 'bar', 'boop.txt')
-        c = Component(file)
-        self.assertTrue(c.path(), file)
-        c.write()
-        self.assertTrue(os.path.exists(os.path.join(dir, 'bar')))
-        self.assertTrue(not os.path.exists(file))
-
-        dir2 = os.path.join(dir, 'bee')
-        c.write(dir2)
-        self.assertTrue(os.path.exists(dir2))
-        self.assertEqual(c.path(), dir2)
+    assert l2 == l1+1
+    assert l3 == l2-1
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_read_write():
+    p1 = tempfile.mkstemp()[1]
+    p2 = tempfile.mkstemp()[1]
+
+    c = Component(p1)
+    assert c.path() == p1
+
+    c.read()
+    assert c.path() == p1
+
+    c.read(p2)
+    assert c.path() == p2
+
+    c.write()
+    assert c.path() == p2
+
+    c.write(p1)
+    assert c.path() == p1
+
+
+def test_read_error():
+    c = Component('foo/bar')  # This is OK
+
+    with pytest.raises(Exception) as exc:
+        c.read()  # This explicit read is not OK
+    assert 'Filesystem path does not exist' in str(exc.value)
+
+
+def test_write_nonexistant():
+    dir = os.path.join(tempfile.mkdtemp(), 'foo')
+
+    file = os.path.join(dir, 'bar', 'boop.txt')
+    c = Component(file)
+    assert c.path() == file
+    c.write()
+    assert os.path.exists(os.path.join(dir, 'bar'))
+    assert not os.path.exists(file)
+
+    dir2 = os.path.join(dir, 'bee')
+    c.write(dir2)
+    assert os.path.exists(dir2)
+    assert c.path() == dir2
