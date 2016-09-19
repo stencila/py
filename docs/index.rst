@@ -17,6 +17,8 @@ Contents:
    context
    session
 
+   helpers/git
+
 Indices and tables
 ==================
 
