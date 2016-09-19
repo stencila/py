@@ -17,6 +17,9 @@ else
 	tox
 endif
 
+test-all:
+	tox -e all
+
 cover:
 	tox -e cover
 	sed -i "s!.tox/cover/lib/python2.7/site-packages/stencila/!!g" coverage.xml
@@ -26,4 +29,4 @@ docs:
 .PHONY: docs
 
 clean:
-	rm -rf build dist stencila.egg-info .tox .cache .coverage coverage.xml
+	rm -rf build dist stencila.egg-info .tox .cache .coverage coverage.xml docs/_build
