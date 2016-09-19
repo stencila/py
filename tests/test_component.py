@@ -47,7 +47,7 @@ def test_read_write():
 
 
 def test_read_error():
-    c = Component('foo/bar')  # This is OK
+    c = Component('./foo/bar')  # This is OK
 
     with pytest.raises(Exception) as exc:
         c.read()  # This explicit read is not OK
@@ -87,7 +87,7 @@ def test_obtain_http():
     assert re.match('/tmp/\w+\.json', obtain('https://httpbin.org/get'))
 
 
-#@slow
+@slow
 def test_obtain_git():
     assert obtain('git://github.com/octocat/Spoon-Knife/README.md', 'bb4cc8d') == \
         os.path.join(home, 'github.com/octocat/Spoon-Knife/bb4cc8d/README.md')

@@ -12,16 +12,35 @@ from .helpers.git import Git, git
 
 class Component:
 
-    def __init__(self, path=''):
-        self.__path = path
-        if os.path.exists(path):
-            self.read(path)
+    def __init__(self, address=None):
+        """
+        Create a component
+
+        :param address: The address of the component
+        """
+        if address:
+            self.__address = resolve(address)
+            try:
+                self.__path = obtain(self.__address)
+            except IOError, exc:
+                if self.__address[:7] == 'file://':
+                    self.__path = self.__address[7:]
+                    return
+                else:
+                    raise exc
+            self.read()
+        else:
+            self.__address = None
+            self.__path = None
 
         components.append(self)
 
     def __del__(self):
         if components:
             components.pop(components.index(self))
+
+    def address(self):
+        return self.__address
 
     def path(self):
         return self.__path
@@ -53,6 +72,23 @@ class Component:
         self.__path = path
 
         return path
+
+    def serve(self, main):
+        return '''
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <link rel="stylesheet" type="text/css" href="/web/%(type)s.min.css">
+                <script src="/web/%(type)s.min.js"></script>
+            </head>
+            <body>
+                <main id="main">%(main)s</main>
+            </body>
+        </html>''' % {
+            'type': self.__class__.__name__.lower(),
+            'main': main
+        }
 
 
 components = []
@@ -150,7 +186,9 @@ def obtain(address, version=None):
         match = re.match('git://([\w\-\.]+)/([\w\-]+/[\w\-]+)/(.+)$', address)
         if match:
             host = match.group(1)
-            if host != 'stenci.la':
+            if host == 'stenci.la':
+                host_dir = ''
+            else:
                 host_dir = host
 
             repo = match.group(2)
@@ -182,3 +220,20 @@ def obtain(address, version=None):
             raise RuntimeError('Unable to determine Git repository URL from address\n  address: %s' % address)
     else:
         raise RuntimeError('Unhandled address\n  address: %s' % address)
+
+
+def open(address):
+    for component in components:
+        if component.address == address:
+            return component
+
+    from document import Document
+    path = obtain(address)
+
+    for type in [Document]:
+        component = type.open(path)
+        if component is not None:
+            return component
+
+    raise RuntimeError('Not able to determine component type from path\n  path: %s' % path)
+
