@@ -1,9 +1,12 @@
 import tempfile
 import os
+import re
 
 import pytest
 
-from stencila import Component, components
+from stencila import Component, home, components, resolve, obtain
+
+from marks import slow
 
 
 def test_new():
@@ -65,3 +68,32 @@ def test_write_nonexistant():
     c.write(dir2)
     assert os.path.exists(dir2)
     assert c.path() == dir2
+
+
+def test_resolve():
+    assert resolve('./report.docx') == 'file://' + os.getcwd() + '/report.docx'
+    assert resolve('gh/foo/bar/report.md') == 'git://github.com/foo/bar/report.md'
+    assert resolve('stats/t-test') == 'git://stenci.la/stats/t-test'
+
+
+def test_obtain_file():
+    h, p = tempfile.mkstemp()
+    assert obtain('file://' + p) == p
+
+
+@slow
+def test_obtain_http():
+    assert re.match('/tmp/\w+\.html', obtain('http://docs.python.org/2/library/intro.html'))
+    assert re.match('/tmp/\w+\.json', obtain('https://httpbin.org/get'))
+
+
+#@slow
+def test_obtain_git():
+    assert obtain('git://github.com/octocat/Spoon-Knife/README.md', 'bb4cc8d') == \
+        os.path.join(home, 'github.com/octocat/Spoon-Knife/bb4cc8d/README.md')
+
+    assert obtain('git://github.com/octocat/Spoon-Knife/README.md') == \
+        os.path.join(home, 'github.com/octocat/Spoon-Knife/master/README.md')
+
+    assert obtain('git://github.com/octocat/Spoon-Knife/index.html', 'master') == \
+        os.path.join(home, 'github.com/octocat/Spoon-Knife/master/index.html')

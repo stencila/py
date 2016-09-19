@@ -17,6 +17,11 @@ setup(
     license='GPL-3',
 
     packages=[
-        'stencila'
+        'stencila',
+        'stencila/helpers'
     ],
+
+    install_requires=[
+        'requests'
+    ]
 )

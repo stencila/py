@@ -38,7 +38,7 @@ class Git:
         )
         out, err = process.communicate()
         if process.returncode:
-            raise RuntimeError('Error calling Git\n  return code: %s\n message: %s\n  arguments: %s' % (process.returncode, err, args))
+            raise RuntimeError('Error calling Git\n  return code: %s\n  message: %s\n  arguments: %s' % (process.returncode, err, args))
         else:
             return out
 
