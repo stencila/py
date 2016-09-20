@@ -18,7 +18,7 @@ class Component:
             self.__address = resolve(address)
             try:
                 self.__path = obtain(self.__address)
-            except IOError, exc:
+            except IOError as exc:
                 if self.__address[:7] == 'file://':
                     self.__path = self.__address[7:]
                     return
@@ -32,7 +32,7 @@ class Component:
         components.append(self)
 
     def __del__(self):
-        if components:
+        if components and self in components:
             components.pop(components.index(self))
 
     def address(self):

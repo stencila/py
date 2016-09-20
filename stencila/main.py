@@ -6,7 +6,6 @@ import tempfile
 
 import requests
 
-from .servers import servers
 from .helpers.git import Git, git
 
 
@@ -19,7 +18,7 @@ components = []
 
 
 def startup():
-    from .servers import start
+    from . import servers
     servers.start()
 
 
@@ -27,6 +26,7 @@ def manifest():
     """
     Get a manifest of current Stencila instance
     """
+    from . import servers
     return {
         'components': [(com.address(), com.type()) for com in components],
         'servers': dict([(type, server.port) for type, server in servers.iteritems()]),
