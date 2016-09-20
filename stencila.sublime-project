@@ -8,7 +8,13 @@
 	"folders":
 	[
 		{
-			"path": "."
+			"path": ".",
+			"folder_exclude_patterns": [
+				".cache",
+				".tox",
+				"stencila.egg-info",
+				"__pycache__"
+			]
 		}
 	],
 

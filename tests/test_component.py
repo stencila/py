@@ -13,6 +13,7 @@ def test_new():
     c = Component()
     assert isinstance(c, Component)
     assert c in components
+    assert re.match('^mem://[a-z0-9]+$', c.address())
 
 
 def test_del():
@@ -71,9 +72,14 @@ def test_write_nonexistant():
 
 
 def test_resolve():
+    assert resolve('~aaaaaaaa') == 'mem://aaaaaaaa'
     assert resolve('./report.docx') == 'file://' + os.getcwd() + '/report.docx'
     assert resolve('gh/foo/bar/report.md') == 'git://github.com/foo/bar/report.md'
     assert resolve('stats/t-test') == 'git://stenci.la/stats/t-test'
+
+
+def test_obtain_mem():
+    assert obtain('mem://aaaaaaaa') is None
 
 
 def test_obtain_file():

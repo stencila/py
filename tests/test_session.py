@@ -1,5 +1,6 @@
 from stencila import Session, components
 
+
 def test():
     c = Session()
     assert isinstance(c, Session)
