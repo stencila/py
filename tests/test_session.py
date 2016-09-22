@@ -14,20 +14,17 @@ def test_execute():
     assert s.execute('x = 42') is None
 
     err = s.execute('x = 42\nfoo')
+    assert err['error'] == 'NameError'
+    assert err['message'] == "name 'foo' is not defined"
     assert err['line'] == 2
-    assert err['type'] == 'NameError'
-    assert err['trace'] == [['code', 2, '', None]]
+    assert err['trace'] == [['code', 2, '', '']]
 
-    assert len(s.history) == 2
-    assert s.history[0] == {'input': 'x = 42', 'output': None}
 
-def test_content():
+def test_run():
     s = Session()
-    s.execute('a = 1')
-    s.execute('b = 2')
+    s.run('a = 1')
+    s.run('b = 2.0')
+    s.run('c = "yo"')
 
-    assert s.objects() == {'a': 'int', 'b': 'int'}
-
-    h = s.content()
-
-    #assert h == ''
+    assert len(s.history) == 3
+    assert s.objects() == {'a': 'int', 'b': 'float', 'c': 'str'}

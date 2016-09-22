@@ -49,6 +49,6 @@ def test_call():
     r = s.call(request(
         method='PUT',
         data='{"expr":"6*7"}'
-    ), c.address, 'text')
+    ), c.address, 'show')
     assert r.status == '200 OK'
     assert r.data.decode('utf-8') == '42'

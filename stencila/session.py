@@ -35,35 +35,40 @@ class Session(Component):
             exec_(code, None, self._top())
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            tb = traceback.extract_tb(exc_traceback)
-            # Remove first 3 trace entrries assocociated with executing code
-            tb = tb[3:]
+            # Extract traceback and for compatibility with >=Py3.5 ensure converted to tuple
+            frames = [tuple(frame) for frame in traceback.extract_tb(exc_traceback)]
+            # Remove first associated with line that executes code above
+            frames = frames[1:]
+            # If this is Python 2 then also need to remove the frames for the six.exec_ function
+            if frames[0][0][-7:] == '/six.py':
+                frames = frames[2:]
             # Replace '<string>' with 'code' for file, and '<module>' with '' for function
             # (filename, line number, function name, text)
             trace = []
-            for line in tb:
+            for frame in frames:
                 trace.append([
-                    line[0].replace('<string>', 'code'),
-                    line[1],
-                    line[2].replace('<module>', ''),
-                    line[3]
+                    frame[0].replace('<string>', 'code'),
+                    frame[1],
+                    frame[2].replace('<module>', ''),
+                    '' if frame[3] is None else frame[3]
                 ])
             # Get line number from last entry
             line = trace[len(trace)-1][1]
-            result = {
+            return {
+                'error': exc_type.__name__,
+                'message': traceback._some_str(exc_value),
                 'line': line,
-                'type': exc_type.__name__,
-                'info': repr(exc_value),
                 'trace': trace
             }
         else:
-            result = None
+            return None
 
+    def run(self, code):
+        result = self.execute(code)
         self._history.append(dict(input=code, output=result))
-
         return result
 
-    def text(self, expr):
+    def show(self, expr):
         return str(self._eval(expr))
 
     def content(self, format='html'):
