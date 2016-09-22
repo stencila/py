@@ -4,14 +4,12 @@ python:
   - "3.4"
   - "3.5"
 
-addons:
-  apt_packages:
-    - pandoc
-
 cache: pip
 
 install:
   - pip install setuptools wheel tox tox-travis
+  - wget https://github.com/jgm/pandoc/releases/download/1.17.2/pandoc-1.17.2-1-amd64.deb
+  - sudo dpkg -i pandoc-1.17.2-1-amd64.deb
 
 script:
   - tox
