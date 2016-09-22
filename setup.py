@@ -18,10 +18,15 @@ setup(
 
     packages=[
         'stencila',
-        'stencila/helpers'
+        'stencila/helpers',
+        'stencila/servers',
+        'stencila/utilities'
     ],
 
     install_requires=[
-        'requests'
+        'requests',
+        'six',
+        'werkzeug',
+        'pyyaml'
     ]
 )

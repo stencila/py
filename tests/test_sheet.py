@@ -1,7 +1,7 @@
-from stencila import Sheet, components
+from stencila import session, Sheet
 
 
 def test():
-    c = Sheet()
-    assert isinstance(c, Sheet)
-    assert c in components
+    s = Sheet()
+    assert s in session.components
+    assert isinstance(s, Sheet)

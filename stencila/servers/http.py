@@ -1,14 +1,14 @@
 import json
-import SocketServer
-import sys
+import logging
+import os
+from six.moves import socketserver
+from io import BytesIO
+import threading
+import traceback
 
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule, BaseConverter
-from werkzeug.exceptions import HTTPException
-from werkzeug.serving import run_simple
-
-from ..main import manifest, shorten, new, info
-from ..main import open as component_open
+from werkzeug.serving import BaseWSGIServer
 
 
 class RegexConverter(BaseConverter):
@@ -19,21 +19,48 @@ class RegexConverter(BaseConverter):
 
 class HttpServer:
 
-    def __init__(self, port=None):
-        self.port = port
+    def __init__(self, session, address='127.0.0.1', port=None):
+        self._session = session
+        self._address = address
+        self._port = port
+        self._server = None
+
+    @property
+    def origin(self):
+        """
+        Get the origin URL for this server (scheme + address + port)
+        """
+        return 'http://%s:%s' % (self._address, self._port)
 
     urls = Map([
-        Rule('/manifest',              methods=['GET'],       endpoint='manifest'),
+        Rule('/',              methods=['GET'],       endpoint='home'),
         Rule('/favicon.ico',              methods=['GET'],       endpoint='favicon'),
+        Rule('/manifest',              methods=['GET'],       endpoint='manifest'),
         Rule('/web/<regex(".+"):path>',    methods=['GET'],       endpoint='web'),
-
         Rule('/new/<regex(".+"):type>',   methods=['GET'],       endpoint='new'),
         Rule('/<regex(".+"):address>',    methods=['GET'],       endpoint='get'),
     ], converters={'regex': RegexConverter})
 
+    def restricted(self, request):
+        if request.path[:5] == '/web/':
+            return False
+        return True
+
+    def authenticate(self, request):
+        return self.respond(
+            self._session.page(False),
+            mimetype='text/html'
+        )
+
+    def home(self, request):
+        return self.respond(
+            self._session.page(),
+            mimetype='text/html'
+        )
+
     def manifest(self, request):
         return self.respond(
-            manifest()
+            self._session.manifest()
         )
 
     def favicon(self, request):
@@ -48,15 +75,15 @@ class HttpServer:
             )
 
     def new(self, request, type):
-        component = new(type)
+        component = self._session.new(type)
         return self.respond(
             status=302,
-            headers=[('Location', '/' + shorten(component.address()))]
+            headers=[('Location', '/' + self._session.shorten(component.address()))]
         )
 
     def get(self, request, address):
         return self.respond(
-            component_open(address).page(),
+            self._session.open(address).page(),
             mimetype='text/html'
         )
 
@@ -75,40 +102,74 @@ class HttpServer:
         method output back into a JSON response
         '''
         request = Request(environ)
-        adapter = self.urls.bind_to_environ(request.environ)
+
+        restricted = self.restricted(request)
+        set_token = False
+        if restricted:
+            token_required = self._session.token
+            token_given = request.args.get('token')
+            if not token_given:
+                token_given = request.cookies.get('token')
+            if token_given != token_required:
+                response = self.authenticate(request)
+                return response(environ, start_response)
+            else:
+                set_token = True
+
         try:
+            adapter = self.urls.bind_to_environ(request.environ)
             endpoint, kwargs = adapter.match(method=request.method)
             kwargs.update(request=request)
             if request.data:
                 kwargs.update(args=json.loads(request.data))
             method = getattr(self, endpoint)
             response = method(**kwargs)
-        except HTTPException, e:
-            response = e
+        except Exception:
+            stream = BytesIO()
+            traceback.print_exc(file=stream)
+            response = Response(stream.getvalue(), status=500)
+
+        if set_token:
+            response.set_cookie('token', token_required)
         return response(environ, start_response)
 
-    def start(self, address='127.0.0.1', port=2000):
-        dev = len(sys.argv) > 1 and sys.argv[1] == 'dev'
-        if dev:
-            print 'Running in development mode. File will reload on changes.'
+    def serve(self, on=True, real=True):
+        if on:
+            # Setup a logger for werkzeug (which prevents it from printing to stdout)
+            logs = self._session.logs
+            logger = logging.getLogger('werkzeug')
+            handler = logging.FileHandler(os.path.join(logs, 'py-http-server.log'))
+            handler.setLevel(logging.WARNING)
+            formatter = logging.Formatter('%(asctime)s|%(levelname)s|%(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
 
-        while port < 65535:
-            try:
-                self.port = port
-                run_simple(
-                    address, port, self,
-                    use_debugger=dev,
-                    use_reloader=dev,
-                    threaded=True
-                )
-                info('HTTP server is serving\n port: %s' % port)
-            except SocketServer.socket.error as exc:
-                if exc.args[0] == 98:
-                    port += 10
-                else:
-                    raise
-            else:
-                break
+            # This shouldn't be necessary but if you don't do it, occaisionally
+            # the statup message goes to stdout
+            import werkzeug
+            werkzeug._internal._logger = logger
 
-    def stop(self):
-        raise NotImplementedError()
+            # Find an available port and serve on it
+            self._port = 2000
+            if not real:
+                while self._port < 65535:
+                    try:
+                        self._server = BaseWSGIServer(
+                            self._address, self._port, self
+                        )
+                    except socketserver.socket.error as exc:
+                        if exc.args[0] == 98:
+                            self._port += 10
+                        else:
+                            raise
+                    else:
+                        thread = threading.Thread(target=self._server.serve_forever)
+                        thread.daemon = True
+                        thread.start()
+                        break
+
+            return self.origin
+        else:
+            if not real:
+                self._server.shutdown()
+                self._server = None
