@@ -151,7 +151,7 @@ class HttpServer:
 
             # Find an available port and serve on it
             self._port = 2000
-            if not real:
+            if real:
                 while self._port < 65535:
                     try:
                         self._server = BaseWSGIServer(
@@ -170,6 +170,6 @@ class HttpServer:
 
             return self.origin
         else:
-            if not real:
+            if real:
                 self._server.shutdown()
                 self._server = None
