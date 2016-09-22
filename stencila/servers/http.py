@@ -3,12 +3,13 @@ import logging
 import os
 from six.moves import socketserver
 from io import BytesIO
+import re
 import threading
 import traceback
 
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule, BaseConverter
-from werkzeug.serving import BaseWSGIServer
+from werkzeug.serving import ThreadedWSGIServer
 
 
 class RegexConverter(BaseConverter):
@@ -32,14 +33,81 @@ class HttpServer:
         """
         return 'http://%s:%s' % (self._address, self._port)
 
-    urls = Map([
-        Rule('/',              methods=['GET'],       endpoint='home'),
-        Rule('/favicon.ico',              methods=['GET'],       endpoint='favicon'),
-        Rule('/manifest',              methods=['GET'],       endpoint='manifest'),
-        Rule('/web/<regex(".+"):path>',    methods=['GET'],       endpoint='web'),
-        Rule('/new/<regex(".+"):type>',   methods=['GET'],       endpoint='new'),
-        Rule('/<regex(".+"):address>',    methods=['GET'],       endpoint='get'),
-    ], converters={'regex': RegexConverter})
+
+    def serve(self, on=True, real=True):
+        if on:
+            # Setup a logger for werkzeug (which prevents it from printing to stdout)
+            logs = self._instance.logs
+            logger = logging.getLogger('werkzeug')
+            handler = logging.FileHandler(os.path.join(logs, 'py-http-server.log'))
+            handler.setLevel(logging.WARNING)
+            formatter = logging.Formatter('%(asctime)s|%(levelname)s|%(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+
+            # This shouldn't be necessary but if you don't do it, occaisionally
+            # the statup message goes to stdout
+            import werkzeug
+            werkzeug._internal._logger = logger
+
+            # Find an available port and serve on it
+            self._port = 2000
+            if real:
+                while self._port < 65535:
+                    try:
+                        self._server = ThreadedWSGIServer(
+                            self._address, self._port, self
+                        )
+                    except socketserver.socket.error as exc:
+                        if exc.args[0] == 98:
+                            self._port += 10
+                        else:
+                            raise
+                    else:
+                        thread = threading.Thread(target=self._server.serve_forever)
+                        thread.daemon = True
+                        thread.start()
+                        break
+
+            return self.origin
+        else:
+            if real:
+                self._server.shutdown()
+                self._server = None
+
+    def __call__(self, environ, start_response):
+        '''
+        WSGI application interface
+
+        Does conversion of JSON request data into method args and
+        method output back into a JSON response
+        '''
+        request = Request(environ)
+
+        restricted = self.restricted(request)
+        set_token = False
+        if restricted:
+            token_required = self._instance.token
+            token_given = request.args.get('token')
+            if not token_given:
+                token_given = request.cookies.get('token')
+            if token_given != token_required:
+                response = self.authenticate(request)
+                return response(environ, start_response)
+            else:
+                set_token = True
+
+        try:
+            method, args = self.dispatch(request.path)
+            response = method(request, *args)
+        except Exception:
+            stream = BytesIO()
+            traceback.print_exc(file=stream)
+            response = Response(stream.getvalue(), status=500)
+
+        if set_token:
+            response.set_cookie('token', token_required)
+        return response(environ, start_response)
 
     def restricted(self, request):
         if request.path[:5] == '/web/':
@@ -48,9 +116,29 @@ class HttpServer:
 
     def authenticate(self, request):
         return self.respond(
-            self._instance.page(False),
+            self._instance.page(),
             mimetype='text/html'
         )
+
+    call_re = re.compile(r'^/(.+?)!(.+)$')
+
+    def dispatch(self, path):
+        if path == '/':
+            return self.home, []
+        if path == '/manifest':
+            return self.manifest, []
+        if path == '/favicon.ico':
+            return self.favicon, []
+        if path[:5] == '/web/':
+            return self.web, [path[5:]]
+        if path[:5] == '/new/':
+            return self.new, [path[5:]]
+
+        match = self.call_re.match(path)
+        if match:
+            return self.call, list(match.groups())
+
+        return self.page, [path[1:]]
 
     def home(self, request):
         return self.respond(
@@ -81,9 +169,23 @@ class HttpServer:
             headers=[('Location', '/' + self._instance.shorten(component.address()))]
         )
 
-    def get(self, request, address):
+    def page(self, request, address):
+        component = self._instance.open(address)
         return self.respond(
-            self._instance.open(address).page(),
+            component.page(),
+            mimetype='text/html'
+        )
+
+    def call(self, request, address, method):
+        component = self._instance.open(address)
+        bound_method = getattr(component, method)
+        print request.data
+        if request.data:
+            kwargs = json.loads(request.data)
+        else:
+            kwargs = {}
+        return self.respond(
+            bound_method(**kwargs),
             mimetype='text/html'
         )
 
@@ -93,83 +195,3 @@ class HttpServer:
         else:
             content = data
         return Response(content, status=status, headers=headers, mimetype=mimetype)
-
-    def __call__(self, environ, start_response):
-        '''
-        WSGI application interface
-
-        Does conversion of JSON request data into method args and
-        method output back into a JSON response
-        '''
-        request = Request(environ)
-
-        restricted = self.restricted(request)
-        set_token = False
-        if restricted:
-            token_required = self._instance.token
-            token_given = request.args.get('token')
-            if not token_given:
-                token_given = request.cookies.get('token')
-            if token_given != token_required:
-                response = self.authenticate(request)
-                return response(environ, start_response)
-            else:
-                set_token = True
-
-        try:
-            adapter = self.urls.bind_to_environ(request.environ)
-            endpoint, kwargs = adapter.match(method=request.method)
-            kwargs.update(request=request)
-            if request.data:
-                kwargs.update(args=json.loads(request.data))
-            method = getattr(self, endpoint)
-            response = method(**kwargs)
-        except Exception:
-            stream = BytesIO()
-            traceback.print_exc(file=stream)
-            response = Response(stream.getvalue(), status=500)
-
-        if set_token:
-            response.set_cookie('token', token_required)
-        return response(environ, start_response)
-
-    def serve(self, on=True, real=True):
-        if on:
-            # Setup a logger for werkzeug (which prevents it from printing to stdout)
-            logs = self._instance.logs
-            logger = logging.getLogger('werkzeug')
-            handler = logging.FileHandler(os.path.join(logs, 'py-http-server.log'))
-            handler.setLevel(logging.WARNING)
-            formatter = logging.Formatter('%(asctime)s|%(levelname)s|%(message)s')
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-
-            # This shouldn't be necessary but if you don't do it, occaisionally
-            # the statup message goes to stdout
-            import werkzeug
-            werkzeug._internal._logger = logger
-
-            # Find an available port and serve on it
-            self._port = 2000
-            if real:
-                while self._port < 65535:
-                    try:
-                        self._server = BaseWSGIServer(
-                            self._address, self._port, self
-                        )
-                    except socketserver.socket.error as exc:
-                        if exc.args[0] == 98:
-                            self._port += 10
-                        else:
-                            raise
-                    else:
-                        thread = threading.Thread(target=self._server.serve_forever)
-                        thread.daemon = True
-                        thread.start()
-                        break
-
-            return self.origin
-        else:
-            if real:
-                self._server.shutdown()
-                self._server = None

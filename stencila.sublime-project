@@ -10,6 +10,7 @@
 		{
 			"path": ".",
 			"folder_exclude_patterns": [
+				"build",
 				".cache",
 				".tox",
 				"stencila.egg-info",

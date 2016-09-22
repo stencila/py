@@ -24,9 +24,10 @@ setup(
     ],
 
     install_requires=[
+        'pystache',
+        'pyyaml',
         'requests',
         'six',
         'werkzeug',
-        'pyyaml'
     ]
 )
