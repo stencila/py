@@ -39,7 +39,7 @@ def test_page():
         method='GET'
     ), c.address)
     assert r.status == '200 OK'
-    assert re.match(r'^<!DOCTYPE', r.data)
+    assert r.data.decode('utf-8')[:9] == '<!DOCTYPE'
 
 
 def test_call():
@@ -51,4 +51,4 @@ def test_call():
         data='{"expr":"6*7"}'
     ), c.address, 'text')
     assert r.status == '200 OK'
-    assert r.data == '42'
+    assert r.data.decode('utf-8') == '42'

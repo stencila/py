@@ -179,9 +179,8 @@ class HttpServer:
     def call(self, request, address, method):
         component = self._instance.open(address)
         bound_method = getattr(component, method)
-        print request.data
         if request.data:
-            kwargs = json.loads(request.data)
+            kwargs = json.loads(request.data.decode('utf-8'))
         else:
             kwargs = {}
         return self.respond(

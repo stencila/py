@@ -16,7 +16,7 @@ import requests
 from .version import __version__
 from .document import Document
 from .sheet import Sheet
-from .context import Context
+from .session import Session
 from .environ import Environ
 from .helpers.git import git, Git
 from .helpers import yaml_ as yaml
@@ -91,7 +91,7 @@ class Instance:
         if config is None:
             self._config = InstanceConfig(self)
 
-        self._context = Context()
+        self._session = Session()
         self._environ = Environ()
 
         if self._config['startup']['serve']:
@@ -283,8 +283,8 @@ class Instance:
             return Document()
         elif type == 'sheet':
             return Sheet()
-        elif type == 'context':
-            return Context()
+        elif type == 'session':
+            return Session()
         elif type == 'environ':
             return Environ()
         else:
@@ -300,7 +300,7 @@ class Instance:
             addresses = [com.address for com in self._components]
             raise RuntimeError('Not able to find in-memory component\n  address: %s\n  addresses: %s' % (address, addresses))
 
-        for type in [Document, Sheet, Context, Environ]:
+        for type in [Document, Sheet, Session, Environ]:
             component = type.open(address, path)
             if component is not None:
                 return component
