@@ -4,7 +4,7 @@ import random
 import string
 
 from .version import __version__
-from . import session_instance
+from . import instance_
 
 
 class Component:
@@ -15,13 +15,13 @@ class Component:
 
         :param address: The address of the component
         """
-        from .session_instance import instance as session
+        from .instance_ import instance
         if address:
-            self._address = session.resolve(address)
+            self._address = instance.resolve(address)
             if path:
                 self._path = path
             else:
-                self._path = session.obtain(self._address)
+                self._path = instance.obtain(self._address)
             self.read()
         else:
             self._address = 'mem://' + ''.join(
@@ -29,17 +29,17 @@ class Component:
             )
             self._path = None
 
-        session.register(self)
+        instance.register(self)
 
     def __del__(self):
-        # On final garbage collection, the session may not
+        # On final garbage collection, the instance may not
         # exists, so deal with that
         try:
-            from .session_instance import instance as session
+            from .instance_ import instance
         except ValueError:
             pass
         else:
-            session.deregister(self)
+            instance.deregister(self)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.address)
@@ -127,5 +127,5 @@ class Component:
         }
 
     def view(self):
-        from .session_instance import instance as session
-        return session.view(self)
+        from .instance_ import instance
+        return instance.view(self)

@@ -19,8 +19,8 @@ class RegexConverter(BaseConverter):
 
 class HttpServer:
 
-    def __init__(self, session, address='127.0.0.1', port=None):
-        self._session = session
+    def __init__(self, instance, address='127.0.0.1', port=None):
+        self._instance = instance
         self._address = address
         self._port = port
         self._server = None
@@ -48,19 +48,19 @@ class HttpServer:
 
     def authenticate(self, request):
         return self.respond(
-            self._session.page(False),
+            self._instance.page(False),
             mimetype='text/html'
         )
 
     def home(self, request):
         return self.respond(
-            self._session.page(),
+            self._instance.page(),
             mimetype='text/html'
         )
 
     def manifest(self, request):
         return self.respond(
-            self._session.manifest()
+            self._instance.manifest()
         )
 
     def favicon(self, request):
@@ -75,15 +75,15 @@ class HttpServer:
             )
 
     def new(self, request, type):
-        component = self._session.new(type)
+        component = self._instance.new(type)
         return self.respond(
             status=302,
-            headers=[('Location', '/' + self._session.shorten(component.address()))]
+            headers=[('Location', '/' + self._instance.shorten(component.address()))]
         )
 
     def get(self, request, address):
         return self.respond(
-            self._session.open(address).page(),
+            self._instance.open(address).page(),
             mimetype='text/html'
         )
 
@@ -106,7 +106,7 @@ class HttpServer:
         restricted = self.restricted(request)
         set_token = False
         if restricted:
-            token_required = self._session.token
+            token_required = self._instance.token
             token_given = request.args.get('token')
             if not token_given:
                 token_given = request.cookies.get('token')
@@ -136,7 +136,7 @@ class HttpServer:
     def serve(self, on=True, real=True):
         if on:
             # Setup a logger for werkzeug (which prevents it from printing to stdout)
-            logs = self._session.logs
+            logs = self._instance.logs
             logger = logging.getLogger('werkzeug')
             handler = logging.FileHandler(os.path.join(logs, 'py-http-server.log'))
             handler.setLevel(logging.WARNING)

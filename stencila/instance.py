@@ -22,12 +22,12 @@ from .helpers.git import git, Git
 from .helpers import yaml_ as yaml
 from .servers.http import HttpServer
 from .utilities import update
-from . import session_instance
+from . import instance_
 
 
-class SessionConfig(dict):
+class InstanceConfig(dict):
 
-    def __init__(self, session):
+    def __init__(self, instance):
         # Defaults
         self['startup'] = {
             'serve': True
@@ -56,23 +56,23 @@ class SessionConfig(dict):
             self['startup']['serve'] = args.startup_serve in ('true', '1')
 
 
-class Session:
+class Instance:
     """
-    The Stencila session.
+    The Stencila instance.
 
     Orchestrates ``Components`` and encapsulates application state.
-    This is a singleton class; there should only ever be one ``Session``
+    This is a singleton class; there should only ever be one ``Instance``
     in memory in each Python process (although this is not enforced for purposes of testing)
     """
 
     def __init__(self, config=None):
         """
-        Inititalise the session
+        Inititalise the instance
 
 
         """
-        if not session_instance.instance:
-            session_instance.instance = self
+        if not instance_.instance:
+            instance_.instance = self
 
         self._id = str(uuid.uuid1())
 
@@ -89,7 +89,7 @@ class Session:
         self._servers = {}
 
         if config is None:
-            self._config = SessionConfig(self)
+            self._config = InstanceConfig(self)
 
         self._context = Context()
         self._environ = Environ()
@@ -349,11 +349,11 @@ class Session:
         return '''<!DOCTYPE html>
     <html>
         <head>
-            <link rel="stylesheet" type="text/css" href="/web/session.min.css">
+            <link rel="stylesheet" type="text/css" href="/web/instance.min.css">
         </head>
         <body>
             <script id="data" type="application/json">%(data)s</script>
-            <script src="/web/session.min.js"></script>
+            <script src="/web/instance.min.js"></script>
         </body>
     </html>''' % {
             'data': json.dumps(data)

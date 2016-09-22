@@ -1,10 +1,10 @@
-from stencila import session, Document
+from stencila import instance, Document
 
 
 def test_new():
     d = Document()
     assert isinstance(d, Document)
-    assert d in session.components
+    assert d in instance.components
 
 
 def test_read_file():

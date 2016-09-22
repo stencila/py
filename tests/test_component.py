@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from stencila import session, Component
+from stencila import instance, Component
 
 from marks import slow
 
@@ -12,18 +12,18 @@ from marks import slow
 def test_new():
     c = Component()
     assert isinstance(c, Component)
-    assert c in session.components
-    assert session.provide(c.address) is c
+    assert c in instance.components
+    assert instance.provide(c.address) is c
     assert re.match('^mem://[a-z0-9]+$', c.address)
     assert repr(c) == 'Component(%s)' % c.address
 
 
 def test_del():
-    l1 = len(session.components)
+    l1 = len(instance.components)
     c = Component()
-    l2 = len(session.components)
+    l2 = len(instance.components)
     c.__del__()
-    l3 = len(session.components)
+    l3 = len(instance.components)
 
     assert l2 == l1+1
     assert l3 == l2-1
@@ -73,40 +73,40 @@ def test_write_nonexistant():
 
 
 def test_resolve():
-    assert session.resolve('~aaaaaaaa') == 'mem://aaaaaaaa'
-    assert session.resolve('./report.docx') == 'file://' + os.getcwd() + '/report.docx'
-    assert session.resolve('gh/foo/bar/report.md') == 'git://github.com/foo/bar/report.md'
-    assert session.resolve('stats/t-test') == 'git://stenci.la/stats/t-test'
+    assert instance.resolve('~aaaaaaaa') == 'mem://aaaaaaaa'
+    assert instance.resolve('./report.docx') == 'file://' + os.getcwd() + '/report.docx'
+    assert instance.resolve('gh/foo/bar/report.md') == 'git://github.com/foo/bar/report.md'
+    assert instance.resolve('stats/t-test') == 'git://stenci.la/stats/t-test'
 
 
 def test_obtain_mem():
-    assert session.obtain('mem://aaaaaaaa') is None
+    assert instance.obtain('mem://aaaaaaaa') is None
 
 
 def test_obtain_file():
     h, p = tempfile.mkstemp()
-    assert session.obtain('file://' + p) == p
+    assert instance.obtain('file://' + p) == p
 
 
 @slow
 def test_obtain_http():
-    assert re.match('/tmp/\w+\.html', session.obtain('http://docs.python.org/2/library/intro.html'))
-    assert re.match('/tmp/\w+\.json', session.obtain('https://httpbin.org/get'))
+    assert re.match('/tmp/\w+\.html', instance.obtain('http://docs.python.org/2/library/intro.html'))
+    assert re.match('/tmp/\w+\.json', instance.obtain('https://httpbin.org/get'))
 
 
 @slow
 def test_obtain_git():
-    assert session.obtain('git://github.com/octocat/Spoon-Knife/README.md', 'bb4cc8d') == \
-        os.path.join(session.home, 'github.com/octocat/Spoon-Knife/bb4cc8d/README.md')
+    assert instance.obtain('git://github.com/octocat/Spoon-Knife/README.md', 'bb4cc8d') == \
+        os.path.join(instance.home, 'github.com/octocat/Spoon-Knife/bb4cc8d/README.md')
 
-    assert session.obtain('git://github.com/octocat/Spoon-Knife/README.md') == \
-        os.path.join(session.home, 'github.com/octocat/Spoon-Knife/master/README.md')
+    assert instance.obtain('git://github.com/octocat/Spoon-Knife/README.md') == \
+        os.path.join(instance.home, 'github.com/octocat/Spoon-Knife/master/README.md')
 
-    assert session.obtain('git://github.com/octocat/Spoon-Knife/index.html', 'master') == \
-        os.path.join(session.home, 'github.com/octocat/Spoon-Knife/master/index.html')
+    assert instance.obtain('git://github.com/octocat/Spoon-Knife/index.html', 'master') == \
+        os.path.join(instance.home, 'github.com/octocat/Spoon-Knife/master/index.html')
 
 
 def test_open():
-    d = session.open('gh/octocat/Spoon-Knife/README.md')
+    d = instance.open('gh/octocat/Spoon-Knife/README.md')
     assert d.type == 'document'
     assert d.address == 'git://github.com/octocat/Spoon-Knife/README.md'
