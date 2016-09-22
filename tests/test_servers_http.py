@@ -15,15 +15,24 @@ def test_serve():
     s = HttpServer(instance)
     c = Client(s, Response)
 
-    assert s.serve() == s.origin
+    s.serve()
+    assert s.status == 'on'
+    assert re.match('^http://127.0.0.1', s.origin)
 
     r = c.get('/')
-    assert r.status == '200 OK'
+    assert r.status == '403 FORBIDDEN'
     assert not re.search('components', r.data.decode('utf-8')), 'is not authenticated'
 
     r = c.get('/?token='+instance.token)
     assert r.status == '200 OK'
     assert re.search('components', r.data.decode('utf-8')), 'is authenticated'
+
+    r = c.get('/!foo-bar')
+    assert r.status == '500 INTERNAL SERVER ERROR'
+    assert re.search('Traceback', r.data.decode('utf-8')), 'returns a traceback of error'
+
+    s.serve(False)
+    assert s.status == 'off'
 
 
 def test_dispatch():
@@ -32,21 +41,22 @@ def test_dispatch():
     assert s.dispatch('/web/some/file.js') == (s.web, ['some/file.js'])
     assert s.dispatch('/favicon.ico') == (s.web, ['images/favicon.ico'])
 
-    assert s.dispatch('/') == (s.page, [None])
+    assert s.dispatch('/') == (s.get, [None])
     assert s.dispatch('/!manifest') == (s.call, [None, 'manifest'])
 
+    assert s.dispatch('/new/sheet') == (s.new, ['sheet'])
 
-    assert s.dispatch('/mem://some/address') == (s.page, ['mem://some/address'])
-    assert s.dispatch('/file://some/address') == (s.page, ['file://some/address'])
+    assert s.dispatch('/mem://some/address') == (s.get, ['mem://some/address'])
+    assert s.dispatch('/file://some/address') == (s.get, ['file://some/address'])
 
     assert s.dispatch('/mem://some/address!method') == (s.call, ['mem://some/address', 'method'])
 
 
-def test_page():
+def test_get():
     s = HttpServer(instance)
     c = Session()
 
-    r = s.page(request(
+    r = s.get(request(
         method='GET'
     ), c.address)
     assert r.status == '200 OK'
@@ -63,3 +73,13 @@ def test_call():
     ), c.address, 'show')
     assert r.status == '200 OK'
     assert r.data.decode('utf-8') == '"42"'
+
+
+def test_new():
+    s = HttpServer(instance)
+
+    r = s.new(request(
+        method='POST'
+    ), 'sheet')
+    assert r.status == '302 FOUND'
+    assert 'Location' in r.headers

@@ -325,39 +325,47 @@ class Instance:
                 server.serve(on=False, real=real)
             return None
 
-    def summary(self):
-        return {
+    html = '''<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="/web/instance.min.css">
+    </head>
+    <body>
+        <script id="data" type="application/json">%s</script>
+        <script src="/web/instance.min.js"></script>
+    </body>
+</html>'''
+
+    def login(self):
+        return self.html % json.dumps({
             'stencila': self.id,
             'package': 'py',
-            'version': __version__
-        }
-
-    def manifest(self):
-        manifest = self.summary()
-        manifest.update({
-            'components': [(com.type, com.address) for com in self._components],
-            'servers': dict([(type, server.origin) for type, server in self._servers.items()]),
+            'version': __version__,
+            'login': True,
         })
-        return manifest
 
-    def page(self, authenticated=True):
-        if not authenticated:
-            data = self.summary()
+    def get(self, address, format='html'):
+        if address is not None:
+            component = self.open(address)
+            return component.get(format)
         else:
-            data = self.manifest()
+            if format == 'data':
+                return {
+                    'stencila': self.id,
+                    'package': 'py',
+                    'version': __version__,
+                    'components': [(com.type, com.address) for com in self._components],
+                    'servers': dict([(type, server.origin) for type, server in self._servers.items()]),
+                }
+            else:
+                return self.html % json.dumps(self.get(None, format='data'))
 
-        return '''<!DOCTYPE html>
-    <html>
-        <head>
-            <link rel="stylesheet" type="text/css" href="/web/instance.min.css">
-        </head>
-        <body>
-            <script id="data" type="application/json">%(data)s</script>
-            <script src="/web/instance.min.js"></script>
-        </body>
-    </html>''' % {
-            'data': json.dumps(data)
-        }
+    def call(self, address, method, args):
+        if address is None:
+            obj = self
+        else:
+            obj = self.open(address)
+        return getattr(obj, method)(**args)
 
     def view(self, component=None):
         self.serve()

@@ -99,7 +99,9 @@ class Component:
 
         return path
 
-    def page(self):
+    def get(self, format='html'):
+        assert format == 'html'
+
         return '''<!DOCTYPE html>
 <html>
     <head>

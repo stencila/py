@@ -13,6 +13,6 @@ def test_read_file():
     assert d.read('./tests/test_document_2.md').content('html') == '<p>Hello <em>world</em>!</p>\n'
 
 
-def test_page():
+def test_get():
     d = Document('./tests/test_document_1.html')
-    d.page()
+    d.get()

@@ -1,8 +1,9 @@
 import json
 import logging
 import os
+import six
 from six.moves import socketserver
-from io import BytesIO
+from io import BytesIO, StringIO
 import re
 import threading
 import traceback
@@ -27,6 +28,9 @@ class HttpServer:
         """
         return 'http://%s:%s' % (self._address, self._port)
 
+    @property
+    def status(self):
+        return 'on' if self._server else 'off'
 
     def serve(self, on=True, real=True):
         if on:
@@ -70,49 +74,36 @@ class HttpServer:
                 self._server = None
 
     def __call__(self, environ, start_response):
-        '''
+        """
         WSGI application interface
 
         Does conversion of JSON request data into method args and
         method output back into a JSON response
-        '''
+        """
         request = Request(environ)
+        method, args = self.dispatch(request.path)
 
-        restricted = self.restricted(request)
-        set_token = False
-        if restricted:
-            token_required = self._instance.token
-            token_given = request.args.get('token')
-            if not token_given:
-                token_given = request.cookies.get('token')
-            if token_given != token_required:
-                response = self.authenticate(request)
-                return response(environ, start_response)
+        def respond():
+            if method == self.web:
+                return method(request, args)
             else:
-                set_token = True
+                token_required = self._instance.token
+                token_provided = request.args.get('token')
+                if not token_provided:
+                    token_provided = request.cookies.get('token')
+                if token_provided != token_required:
+                    return Response(self._instance.login(), status=403)
+                try:
+                    response = method(request, *args)
+                except Exception:
+                    stream = StringIO() if six.PY3 else BytesIO()
+                    traceback.print_exc(file=stream)
+                    response = Response(stream.getvalue(), status=500)
 
-        try:
-            method, args = self.dispatch(request.path)
-            response = method(request, *args)
-        except Exception:
-            stream = BytesIO()
-            traceback.print_exc(file=stream)
-            response = Response(stream.getvalue(), status=500)
+                response.set_cookie('token', token_required)
+                return response
 
-        if set_token:
-            response.set_cookie('token', token_required)
-        return response(environ, start_response)
-
-    def restricted(self, request):
-        if request.path[:5] == '/web/':
-            return False
-        return True
-
-    def authenticate(self, request):
-        return Response(
-            self._instance.page(False),
-            mimetype='text/html'
-        )
+        return respond()(environ, start_response)
 
     instance_call_re = re.compile(r'^/!(.+)$')
     component_call_re = re.compile(r'^/(.+?)!(.+)$')
@@ -124,7 +115,7 @@ class HttpServer:
             return self.web, [path[5:]]
 
         if path == '/':
-            return self.page, [None]
+            return self.get, [None]
 
         match = self.instance_call_re.match(path)
         if match:
@@ -137,46 +128,27 @@ class HttpServer:
         if match:
             return self.call, list(match.groups())
 
-        return self.page, [path[1:]]
+        return self.get, [path[1:]]
 
     def web(self, request, path):
-        return Response(
-            status=302,
-            # TODO only do this if in development - config option
-            headers=[('Location', 'http://127.0.0.1:9000/web/' + path)]
-        )
-
-    def page(self, request, address):
-        if address is None:
-            obj = self._instance
-        else:
-            obj = self._instance.open(address)
-        content = obj.page()
-        return Response(
-            content,
-            mimetype='text/html'
-        )
-
-    def call(self, request, address, method):
-        if address is None:
-            obj = self._instance
-        else:
-            obj = self._instance.open(address)
-        if request.data:
-            kwargs = json.loads(request.data.decode('utf-8'))
-        else:
-            kwargs = {}
-        result = getattr(obj, method)(**kwargs)
-        content = json.dumps(result)
-        return Response(
-            content,
-            mimetype='application/json'
-        )
+        url = 'http://127.0.0.1:9000/web/' + path
+        return Response(status=302, headers=[('Location', url)])
 
     def new(self, request, type):
-        component = self._instance.new(type)
-        return Response(
-            '',
-            status=302,
-            headers=[('Location', '/' + self._instance.shorten(component.address()))]
+        url = '/' + self._instance.shorten(
+            self._instance.new(type).address
         )
+        return Response('', status=302, headers=[('Location', url)])
+
+    def get(self, request, address):
+        content = self._instance.get(address, 'html')
+        return Response(content, mimetype='text/html')
+
+    def call(self, request, address, method):
+        if request.data:
+            args = json.loads(request.data.decode('utf-8'))
+        else:
+            args = {}
+        result = self._instance.call(address, method, args)
+        content = json.dumps(result)
+        return Response(content, mimetype='application/json')
