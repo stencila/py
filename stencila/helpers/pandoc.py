@@ -1,6 +1,7 @@
 import subprocess
 import tempfile
 
+
 class Pandoc:
     """
     Helps with Pandoc workflow tasks
@@ -16,7 +17,7 @@ class Pandoc:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
-        out, err = process.communicate(input=input)
+        out, err = process.communicate(input=input.encode() if input else None)
         # Decode bytes to unicode
         out = out.decode('utf8')
         err = err.decode('utf8')
@@ -48,7 +49,7 @@ class Pandoc:
 
     def write(self, content, path, fro, to):
         with tempfile.NamedTemporaryFile() as temp:
-            temp.write(content)
+            temp.write(content.encode())
             temp.flush()
             self.call(self.options(fro, to) + ['--output', path, temp.name])
 
