@@ -85,7 +85,7 @@ class HttpServer:
 
         def respond():
             if method == self.web:
-                return method(request, args)
+                return method(request, *args)
             else:
                 token_required = self._instance.token
                 token_provided = request.args.get('token')
