@@ -56,7 +56,7 @@ class InstanceConfig(dict):
             self['startup']['serve'] = args.startup_serve in ('true', '1')
 
 
-class Instance:
+class Instance(object):
     """
     The Stencila instance.
 
@@ -300,10 +300,9 @@ class Instance:
             addresses = [com.address for com in self._components]
             raise RuntimeError('Not able to find in-memory component\n  address: %s\n  addresses: %s' % (address, addresses))
 
-        for type in [Document, Sheet, Session, Environ]:
-            component = type.open(address, path)
-            if component is not None:
-                return component
+        for clazz in [Document, Sheet, Session, Environ]:
+            if clazz.know(path):
+                return Document(address, path)
 
         raise RuntimeError('Not able to determine component type from path\n  path: %s' % path)
 

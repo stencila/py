@@ -7,7 +7,7 @@ from .version import __version__
 from . import instance_
 
 
-class Component:
+class Component(object):
 
     def __init__(self, address=None, path=None):
         """
@@ -70,6 +70,17 @@ class Component:
     @property
     def path(self):
         return self._path
+
+    @classmethod
+    def know(clazz, path):
+        """
+        Does this component know how to handle this path?
+
+        This method is mostly used internally to determine which
+        class of ``Component`` should open a path. It should be
+        overidden in derived classes
+        """
+        return False
 
     def read(self, path=''):
         if path is None or path == '':
