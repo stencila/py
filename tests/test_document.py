@@ -17,9 +17,13 @@ def test_new():
 def test_convert():
     d = Document()
 
-    d.html = 'Hello'
-    assert d.html == 'Hello'
-    assert d.md == 'Hello'
+    d.html = 'My name is <em>HTML</em>'
+    assert d.html == 'My name is <em>HTML</em>'
+    assert d.md == 'My name is *HTML*'
+
+    d.md = 'My name is *Markdown*'
+    assert d.md == 'My name is *Markdown*'
+    assert d.html == '<p>My name is <em>Markdown</em></p>'
 
 
 def test_know():
