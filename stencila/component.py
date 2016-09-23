@@ -128,6 +128,11 @@ class Component:
             'content': self.content()
         }
 
+    @property
+    def url(self):
+        from .instance_ import instance
+        return instance.url(self)
+
     def view(self):
         from .instance_ import instance
         return instance.view(self)

@@ -367,12 +367,15 @@ class Instance:
             obj = self.open(address)
         return getattr(obj, method)(**args)
 
+    def url(self, component=None):
+        url = self._servers['http'].origin
+        if component:
+            url += '/' + component.address
+        return url
+
     def view(self, component=None):
         self.serve()
-        url = self._servers['http'].origin + '/'
-        if component:
-            url += component.address
-        url += '?token=' + self._token
+        url = self.url(component) + '?token=' + self._token
         if platform.system() == 'Linux':
             subprocess.call('2>/dev/null 1>&2 xdg-open "%s"' % url, shell=True)
         else:
