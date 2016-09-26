@@ -23,7 +23,7 @@ class DocumentHtml(ComponentConverter):
         """
         if pretty:
             html = doc._content.text if doc._content.text else ''
-            html += ''.join([xml.tostring(child, pretty_print=True) for child in doc._content])
+            html += ''.join([xml.tostring(child, pretty_print=True, encoding='unicode') for child in doc._content])
             return html.strip()
         else:
-            return xml.tostring(doc._content).strip()[6:-7]  # Remove start and end `<root>` tags
+            return xml.tostring(doc._content, encoding='unicode').strip()[6:-7]  # Remove start and end `<root>` tags
