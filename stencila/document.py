@@ -1,84 +1,92 @@
+import copy
 import os
+import re
+
+from lxml import etree as xml
 
 from .component import Component
-from .helpers.pandoc import pandoc
+from .utilities import path_to_format
+from .document_html import DocumentHtml
+from .document_xmd import DocumentXmd
+from .document_xtex import DocumentXtex
 
 
 class Document(Component):
 
     def __init__(self, address=None, path=None):
-        self._content = ''
+        self._content = xml.Element('root')
 
         Component.__init__(self, address, path)
 
-    def content(self, value=None, format='html'):
-        if not value:
-            if format == 'html':
-                return self._content
-            else:
-                return pandoc.convert(self._content, 'html', format).strip()
-        else:
-            if format == 'html':
-                self._content = value
-            else:
-                self._content = pandoc.convert(value, format, 'html').strip()
-
     @property
     def html(self):
-        return self._content
+        return self.dump(format='html')
 
     @html.setter
-    def html(self, html):
-        self._content = html
+    def html(self, content):
+        self.load(content, format='html')
 
     @property
     def md(self):
-        return self.content(format='md')
+        return self.dump(format='md')
 
     @md.setter
-    def md(self, md):
-        self.content(md, format='md')
+    def md(self, content):
+        self.load(content, format='md')
 
-    @classmethod
-    def know(clazz, path):
+    @property
+    def rmd(self):
+        return self.dump(format='rmd')
+
+    @rmd.setter
+    def rmd(self, content):
+        self.load(content, format='rmd')
+
+    @staticmethod
+    def converter(format):
+        """
+        Get the Document converter for a given format
+        """
+        if format == 'html':
+            return DocumentHtml()
+        elif format in ('xmd', 'jsmd', 'pymd', 'rmd'):
+            return DocumentXmd()
+        elif format in ('xtex', 'jstex', 'pytex', 'rtex', 'rnw'):
+            return DocumentXtex()
+        else:
+            raise RuntimeError('Unhandled format\n  format: %s' % format)
+
+    @staticmethod
+    def know(path):
         root, ext = os.path.splitext(path)
-        if ext in ['.html', '.md', '.odt', '.docx']:
+        format = path_to_format(path)
+        try:
+            Document.converter(format)
+        except RuntimeError:
+            return False
+        else:
             return True
-        return False
+
+    def load(self, content, format='html', **options):
+        return self.converter(format).load(self, content, format, **options)
+
+    def dump(self, format='html', **options):
+        return self.converter(format).dump(self, format, **options)
 
     def read(self, path='', format=None):
         path = Component.read(self, path)
         if format is None:
-            root, ext = os.path.splitext(path)
-            if len(ext) > 1:
-                format = ext[1:]
-
-        if format == 'html':
-            with open(path) as file:
-                self._content = file.read().strip()
-        elif format in ('md', 'odt', 'docx'):
-            self._content = pandoc.read(path, format, 'html').strip()
-        else:
-            raise RuntimeError('Unhandled format\n  format: %s' % format)
-
-        return self
+            format = path_to_format(path)
+        return self.converter(format).read(path)
 
     def write(self, path='', format=None):
         path = Component.write(self, path)
         if format is None:
-            root, ext = os.path.splitext(path)
-            if len(ext) > 1:
-                format = ext[1:]
+            format = path_to_format(path)
+        return self.converter(format).write(path)
 
-        if format == 'html':
-            with open(path, 'w') as file:
-                content = self._content
-                if content[-1:] != '\n':
-                    content += '\n'
-                file.write(content)
-        elif format in ('md', 'odt', 'docx'):
-            pandoc.write(self._content, path, 'html', format)
+    def select(self, selector, type='css'):
+        if type == 'css':
+            return self._content.cssselect(selector)
         else:
-            raise RuntimeError('Unhandled format\n  format: %s' % format)
-
-        return self
+            return self._content.xpath(selector)

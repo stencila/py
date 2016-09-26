@@ -28,13 +28,14 @@ class Pandoc:
 
     def read_options(self, format):
         options = {
-            'md': '--from markdown_github'
+            'md': '--from markdown+fenced_code_attributes'
         }.get(format, '--from ' + format)
         return options.split()
 
     def write_options(self, format):
         options = {
-            'md': '--to markdown_github'
+            'md': '--to markdown+fenced_code_attributes',
+            'html': '--no-highlight'
         }.get(format, '--to ' + format)
         return options.split()
 

@@ -11,3 +11,10 @@ def update(d, u):
         else:
             d[k] = v
     return d
+
+
+def path_to_format(path):
+    root, ext = os.path.splitext(path)
+    if len(ext) > 1:
+        return ext[1:]
+    return None
