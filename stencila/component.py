@@ -71,8 +71,7 @@ class Component(object):
     def path(self):
         return self._path
 
-    @classmethod
-    def know(clazz, path):
+    def know(self, path):
         """
         Does this component know how to handle this path?
 

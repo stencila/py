@@ -302,7 +302,7 @@ class Instance(object):
 
         for clazz in [Document, Sheet, Session, Environ]:
             if clazz.know(path):
-                return Document(address, path)
+                return clazz(address, path)
 
         raise RuntimeError('Not able to determine component type from path\n  path: %s' % path)
 
