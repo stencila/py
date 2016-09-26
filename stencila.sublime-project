@@ -37,6 +37,16 @@
 			],
 			"working_dir": "."
 		},
-	]
+	],
+
+    "SublimeLinter":
+    {
+        "linters":
+        {
+            "flake8": {
+                "max-line-length": 120
+            }
+        }
+    }
 }
 
