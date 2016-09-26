@@ -12,9 +12,15 @@ class DocumentHtml(ComponentConverter):
     """
 
     def load(self, doc, html, format, **options):
+        """
+        Load a document from a HTML string
+        """
         doc._content = xml.fromstring('<root>' + html + '</root>')
 
     def dump(self, doc, format, pretty=True):
+        """
+        Dump a document to a HTML string
+        """
         if pretty:
             html = doc._content.text if doc._content.text else ''
             html += ''.join([xml.tostring(child, pretty_print=True) for child in doc._content])

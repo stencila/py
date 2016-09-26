@@ -37,7 +37,7 @@ class DocumentXmd(ComponentConverter):
 
     def load(self, doc, xmd, format):
         """
-        Load a document from XMarkdown
+        Load a document from a XMarkdown string
 
         Conversion from Markdown to internal HTML is done via Pandoc with
         pre and post processing steps
@@ -129,7 +129,7 @@ class DocumentXmd(ComponentConverter):
 
     def dump(self, doc, format):
         """
-        Dump a document to XMarkdown
+        Dump a document to a XMarkdown string
 
         Conversion from internal HTML to Markdown is done via Pandoc with
         pre and post processing steps
@@ -141,7 +141,7 @@ class DocumentXmd(ComponentConverter):
 
     def dump_pre(self, doc, lang):
         """
-        Generate HTML for Pandoc to onvert to Markdown
+        Generate HTML for Pandoc to convert to Markdown
 
         Converts execute and print directives to Pandoc equivalents:
 

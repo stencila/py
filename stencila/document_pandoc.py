@@ -13,13 +13,25 @@ class DocumentPandoc(ComponentConverter):
     """
 
     def load(self, doc, content, format):
+        """
+        Load a document from a string with the format
+        """
         doc.html = pandoc.convert(content, format, 'html')
 
     def dump(self, doc, format):
+        """
+        Dump a document to a string with the format
+        """
         return pandoc.convert(doc.html, 'html', format).strip()
 
     def read(self, doc, path, format):
+        """
+        Read a document from a file with the format
+        """
         doc.html = pandoc.read(path, format, 'html')
 
     def write(self, doc, path, format):
+        """
+        Write a document to a file with the format
+        """
         pandoc.write(doc.html, path, 'html', format)
