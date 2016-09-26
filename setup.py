@@ -27,6 +27,7 @@ setup(
         'cssselect',
         'lxml',
         'pystache',
+        'pyaml',
         'pyyaml',
         'requests',
         'six',

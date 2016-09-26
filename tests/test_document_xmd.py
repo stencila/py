@@ -53,22 +53,34 @@ def test_dump_pre():
     assert c.dump_pre(d, 'js') == '<code>js x</code>'
 
 
-def test_load():
+def stest_load():
     c = DocumentXmd()
     d = Document()
 
-    c.load(d, '''``` {r}
+    c.load(d, '''
+---
+title: A guide to hitch-hiking the Universe
+author:
+  - name: Arthur Dent
+    affiliation: Earth
+---
+
+``` {r}
 x <- 42
 ```
 
-The answer `r x`
+The answer might be `r x`.
 
 ``` {r my-plot, fig.width=6, fig.height=7}
 plot(x)
 ```''', 'rmd')
 
+    assert d.title == 'A guide to hitch-hiking the Universe'
+    assert d.authors == [
+        dict(name='Arthur Dent', affiliation='Earth')
+    ]
     assert d.html == '''<pre data-execute="r">x &lt;- 42</pre>
-<p>The answer <span data-print="x"></span></p>
+<p>The answer might be <span data-print="x"></span>.</p>
 
 <pre id="my-plot" data-execute="r width 6 height 7">plot(x)</pre>'''
 
@@ -77,16 +89,27 @@ def test_dump():
     c = DocumentXmd()
     d = Document()
 
+    d.title = 'A guide to hitch-hiking the Universe'
+    d.authors = [
+        dict(name='Arthur Dent', affiliation='Earth')
+    ]
     d.html = '''<pre data-execute="r">x &lt;- 42</pre>
-<p>The answer <span data-print="x"></span></p>
+<p>The answer could be <span data-print="x"></span>.</p>
 
 <pre id="my-plot" data-execute="r width 6 height 7">plot(x)</pre>'''
 
-    assert c.dump(d, 'rmd') == '''``` {r}
+    assert c.dump(d, 'rmd') == '''---
+title: 'A guide to hitch-hiking the Universe'
+author:
+  - name: 'Arthur Dent'
+    affiliation: Earth
+---
+
+``` {r}
 x <- 42
 ```
 
-The answer `r x`
+The answer could be `r x`.
 
 ``` {r my-plot, fig.width=6, fig.height=7}
 plot(x)

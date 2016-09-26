@@ -4,13 +4,17 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
+import pyaml
+import sys
+if sys.version_info.major > 2: unicode = str
+
 
 def load(string):
     return yaml.load(string, Loader=Loader)
 
 
 def dump(data):
-    return yaml.dump(data, Dumper=Dumper)
+    return pyaml.dump(data, dst=unicode)
 
 
 def read(path):

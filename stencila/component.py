@@ -5,6 +5,8 @@ import string
 
 from .version import __version__
 from . import instance_
+from .component_meta_html import ComponentMetaHtml
+from .component_meta_yaml import ComponentMetaYaml
 
 
 class Component(object):
@@ -29,6 +31,8 @@ class Component(object):
             )
             self._path = None
 
+        self._meta = {}
+
         instance.register(self)
 
     def __del__(self):
@@ -44,6 +48,8 @@ class Component(object):
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.address)
 
+    # Descriptors
+
     @property
     def type(self):
         return self.__class__.__name__.lower()
@@ -54,15 +60,51 @@ class Component(object):
 
     @property
     def title(self):
-        return 'Untitled'
+        return self._meta.get('title')
+
+    @title.setter
+    def title(self, value):
+        self._meta['title'] = value
+
+    @property
+    def description(self):
+        return self._meta.get('description')
+
+    @description.setter
+    def description(self, value):
+        self._meta['description'] = value
 
     @property
     def summary(self):
-        return ''
+        return self._meta.get('summary')
+
+    @summary.setter
+    def summary(self, value):
+        self._meta['summary'] = value
 
     @property
     def keywords(self):
-        return []
+        return self._meta.get('keywords')
+
+    @keywords.setter
+    def keywords(self, value):
+        self._meta['keywords'] = value
+
+    @property
+    def authors(self):
+        return self._meta.get('authors')
+
+    @authors.setter
+    def authors(self, value):
+        self._meta['authors'] = value
+
+    @property
+    def date(self):
+        return self._meta.get('date')
+
+    @date.setter
+    def date(self, value):
+        self._meta['date'] = value
 
     def content(self, format='html'):
         return ''
@@ -115,10 +157,7 @@ class Component(object):
         return '''<!DOCTYPE html>
 <html>
     <head>
-        <title>%(title)s</title>
-        <meta name="address" content="%(address)s">
-        <meta name="description" content="%(summary)s">
-        <meta name="keywords" content="%(keywords)s">
+        %(meta)s
         <meta name="generator" content="stencila-%(package)s-%(version)s">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" type="text/css" href="/web/%(type)s.min.css">
@@ -128,10 +167,7 @@ class Component(object):
         <script src="/web/%(type)s.min.js"></script>
     </body>
 </html>''' % {
-            'title': self.title,
-            'address': self.address,
-            'summary': self.summary,
-            'keywords': ', '.join(self.keywords),
+            'meta': ComponentMetaHtml().dump(self),
             'package': 'py',
             'version': __version__,
             'type': self.type,

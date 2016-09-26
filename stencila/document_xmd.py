@@ -4,6 +4,7 @@ import copy
 from lxml import etree as xml
 
 from .component_converter import ComponentConverter
+from .component_meta_yaml import ComponentMetaYaml
 from .helpers.pandoc import pandoc
 
 
@@ -31,8 +32,16 @@ class DocumentXmd(ComponentConverter):
         ```
 
     Here ``myplot`` is the chunk label and ```fig.width=6, fig.height=7``` are chunk options.
-    A list of chunk options, recognised by the RMarkdown renders, Knitr,
-    is available at http://yihui.name/knitr/options/. Not all of these will be relevant or supported in Stencila.
+    A list of chunk options, recognised by the RMarkdown rendering enging, Knitr,
+    is available at http://yihui.name/knitr/options/.
+    For RMarkdown documents, to maintain compatability with Knitr, options are converted to
+    Stencila execute directive settings as follows
+
+    * eval=FALSE : do FALSE
+    * echo=TRUE : show TRUE
+    * fig.height=6 : height 6
+    * fig.width=7 : width 7
+
     """
 
     def load(self, doc, xmd, format):
@@ -42,6 +51,10 @@ class DocumentXmd(ComponentConverter):
         Conversion from Markdown to internal HTML is done via Pandoc with
         pre and post processing steps
         """
+        meta = re.search(r'\n-{3,}\n((.|\s)+)\n-{3,}\n', '\n' + xmd + '\n')
+        if meta:
+            ComponentMetaYaml().load(doc, meta.group(1))
+
         lang = format[:-2]
         md = self.load_pre(xmd, lang)
         doc.html = pandoc.convert(md, 'md', 'html')
@@ -137,7 +150,13 @@ class DocumentXmd(ComponentConverter):
         lang = format[:-2]
         html = self.dump_pre(doc, lang)
         xmd = pandoc.convert(html, 'html', 'md')
-        return self.dump_post(xmd, lang)
+        xmd = self.dump_post(xmd, lang)
+
+        meta = ComponentMetaYaml().dump(doc)
+        if meta != '{}':
+            xmd = '---\n%s---\n\n%s' % (meta, xmd)
+
+        return xmd
 
     def dump_pre(self, doc, lang):
         """
@@ -178,8 +197,8 @@ class DocumentXmd(ComponentConverter):
 
         for elem in clone.select('[data-print]'):
             args = elem.get('data-print')
-            elem.clear()
             elem.tag = 'code'
+            del elem.attrib['data-print']
             elem.text = lang + ' ' + args
 
         return clone.dump('html', pretty=False)
