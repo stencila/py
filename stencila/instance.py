@@ -17,7 +17,8 @@ from .version import __version__
 from .document import Document
 from .sheet import Sheet
 from .session import Session
-from .environ import Environ
+from .context import Context
+
 from .helpers.git import git, Git
 from .helpers import yaml_ as yaml
 from .servers.http import HttpServer
@@ -90,9 +91,6 @@ class Instance(object):
 
         if config is None:
             self._config = InstanceConfig(self)
-
-        self._session = Session()
-        self._environ = Environ()
 
         if self._config['startup']['serve']:
             self.serve()
@@ -285,8 +283,8 @@ class Instance(object):
             return Sheet()
         elif type == 'session':
             return Session()
-        elif type == 'environ':
-            return Environ()
+        elif type == 'context':
+            return Context()
         else:
             raise RuntimeError('Unhandled component type\n  type: %s' % type)
 
@@ -300,7 +298,7 @@ class Instance(object):
             addresses = [com.address for com in self._components]
             raise RuntimeError('Not able to find in-memory component\n  address: %s\n  addresses: %s' % (address, addresses))
 
-        for clazz in [Document, Sheet, Session, Environ]:
+        for clazz in [Document, Sheet, Session, Context]:
             if clazz.know(path):
                 return clazz(address, path)
 
@@ -318,7 +316,7 @@ class Instance(object):
                         server = HttpServer(self)
                     server.serve(on=True, real=real)
                     self._servers[typ] = server
-            return self._servers['http'].origin
+            return self.url()
         else:
             for typ, server in self._servers.iteritems():
                 server.serve(on=False, real=real)
@@ -369,7 +367,7 @@ class Instance(object):
     def url(self, component=None):
         url = self._servers['http'].origin
         if component:
-            url += '/' + component.address
+            url += '/' + self.shorten(component.address)
         return url
 
     def view(self, component=None):

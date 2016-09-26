@@ -3,12 +3,12 @@ import os
 from .component import Component
 
 
-class Environ(Component):
+class Context(Component):
 
     @staticmethod
     def open(address, path):
         if os.path.isdir(path):
-            return Environ(address, path)
+            return Context(address, path)
         return None
 
     def __init__(self, address=None, path=None):
