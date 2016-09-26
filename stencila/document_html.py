@@ -13,10 +13,11 @@ class DocumentHtml(ComponentConverter):
 
     def load(self, doc, html, format, **options):
         doc._content = xml.fromstring('<root>' + html + '</root>')
-        return doc
 
     def dump(self, doc, format, pretty=True):
         if pretty:
-            return ''.join([xml.tostring(child, pretty_print=True) for child in doc._content]).strip()
+            html = doc._content.text if doc._content.text else ''
+            html += ''.join([xml.tostring(child, pretty_print=True) for child in doc._content])
+            return html.strip()
         else:
             return xml.tostring(doc._content).strip()[6:-7]  # Remove start and end `<root>` tags

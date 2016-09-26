@@ -17,13 +17,13 @@ def test_new():
 def test_convert():
     d = Document()
 
-    d.html = 'My name is <em>HTML</em>'
-    assert d.html == 'My name is <em>HTML</em>'
-    assert d.md == 'My name is *HTML*'
+    d.html = 'My name is <em>HTML</em>.'
+    assert d.html == 'My name is <em>HTML</em>.'
+    assert d.md == 'My name is *HTML*.'
 
-    d.md = 'My name is *Markdown*'
-    assert d.md == 'My name is *Markdown*'
-    assert d.html == '<p>My name is <em>Markdown</em></p>'
+    d.md = 'My name is *Markdown*.'
+    assert d.md == 'My name is *Markdown*.'
+    assert d.html == '<p>My name is <em>Markdown</em>.</p>'
 
 
 def test_know():
@@ -48,5 +48,4 @@ def test_write():
     d.html = html
     for format in 'html', 'md', 'odt', 'docx':
         handle, path = tempfile.mkstemp('.' + format)
-
         assert d.write(path).read(path).html == html

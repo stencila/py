@@ -1,6 +1,4 @@
-import copy
 import os
-import re
 
 from lxml import etree as xml
 
@@ -9,6 +7,7 @@ from .utilities import path_to_format
 from .document_html import DocumentHtml
 from .document_xmd import DocumentXmd
 from .document_xtex import DocumentXtex
+from .document_pandoc import DocumentPandoc
 
 
 class Document(Component):
@@ -53,6 +52,8 @@ class Document(Component):
             return DocumentXmd()
         elif format in ('xtex', 'jstex', 'pytex', 'rtex', 'rnw'):
             return DocumentXtex()
+        elif format in ('docx', 'md', 'odt'):
+            return DocumentPandoc()
         else:
             raise RuntimeError('Unhandled format\n  format: %s' % format)
 
@@ -68,7 +69,8 @@ class Document(Component):
             return True
 
     def load(self, content, format='html', **options):
-        return self.converter(format).load(self, content, format, **options)
+        self.converter(format).load(self, content, format, **options)
+        return self
 
     def dump(self, format='html', **options):
         return self.converter(format).dump(self, format, **options)
@@ -77,13 +79,15 @@ class Document(Component):
         path = Component.read(self, path)
         if format is None:
             format = path_to_format(path)
-        return self.converter(format).read(path)
+        self.converter(format).read(self, path, format)
+        return self
 
     def write(self, path='', format=None):
         path = Component.write(self, path)
         if format is None:
             format = path_to_format(path)
-        return self.converter(format).write(path)
+        self.converter(format).write(self, path, format)
+        return self
 
     def select(self, selector, type='css'):
         if type == 'css':
