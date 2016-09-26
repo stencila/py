@@ -24,7 +24,7 @@ setup(
     ],
 
     install_requires=[
-        'csselect',
+        'cssselect',
         'lxml',
         'pystache',
         'pyyaml',
