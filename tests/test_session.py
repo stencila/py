@@ -20,6 +20,17 @@ def test_execute():
     assert err['trace'] == [['code', 2, '', '']]
 
 
+def test_print():
+    s = Session()
+
+    assert s.print_('42') == '42'
+    assert s.print_('6*7') == '42'
+    assert s.print_('"Hello " + "world"') == 'Hello world'
+
+    err = s.print_('foo')
+    assert err['error'] == 'NameError'
+
+
 def test_run():
     s = Session()
     s.run('a = 1')

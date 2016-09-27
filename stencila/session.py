@@ -29,47 +29,30 @@ class Session(Component):
     def history(self):
         return self._history
 
-
     def execute(self, code):
-        try:
-            exec_(code, None, self._top())
-        except:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            # Extract traceback and for compatibility with >=Py3.5 ensure converted to tuple
-            frames = [tuple(frame) for frame in traceback.extract_tb(exc_traceback)]
-            # Remove first associated with line that executes code above
-            frames = frames[1:]
-            # If this is Python 2 then also need to remove the frames for the six.exec_ function
-            if frames[0][0][-7:] == '/six.py':
-                frames = frames[2:]
-            # Replace '<string>' with 'code' for file, and '<module>' with '' for function
-            # (filename, line number, function name, text)
-            trace = []
-            for frame in frames:
-                trace.append([
-                    frame[0].replace('<string>', 'code'),
-                    frame[1],
-                    frame[2].replace('<module>', ''),
-                    '' if frame[3] is None else frame[3]
-                ])
-            # Get line number from last entry
-            line = trace[len(trace)-1][1]
-            return {
-                'error': exc_type.__name__,
-                'message': traceback._some_str(exc_value),
-                'line': line,
-                'trace': trace
-            }
-        else:
-            return None
+        return self._eval(code, exe=True)
 
     def run(self, code):
-        result = self.execute(code)
+        result = self._eval(code, exe=True)
         self._history.append(dict(input=code, output=result))
         return result
 
-    def show(self, expr):
-        return str(self._eval(expr))
+    def print_(self, expr):
+        result = self._eval(expr)
+        if type(result) is dict and 'error' in result:
+            return result
+        else:
+            return str(result)
+
+    def __getattr__(self, name):
+        """
+        Allow ``print`` to be called as using usual
+        name instead of ``print_``
+        """
+        if name == 'print':
+            return self.print_
+        else:
+            raise AttributeError(name)
 
     def content(self, format='html'):
         return pystache.render('''
@@ -112,9 +95,41 @@ class Session(Component):
         # Get the top scope in the stack
         return self._scopes[len(self._scopes)-1]
 
-    def _eval(self, expr):
-        # Evaluate an expr in the top of the stack
-        return eval(expr, {}, self._top())
+    def _eval(self, code, exe=False):
+        try:
+            if exe:
+                exec_(code, None, self._top())
+            else:
+                return eval(code, None, self._top())
+        except:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            # Extract traceback and for compatibility with >=Py3.5 ensure converted to tuple
+            frames = [tuple(frame) for frame in traceback.extract_tb(exc_traceback)]
+            # Remove first associated with line that executes code above
+            frames = frames[1:]
+            # If this is Python 2 then also need to remove the frames for the six.exec_ function
+            if frames[0][0][-7:] == '/six.py':
+                frames = frames[2:]
+            # Replace '<string>' with 'code' for file, and '<module>' with '' for function
+            # (filename, line number, function name, text)
+            trace = []
+            for frame in frames:
+                trace.append([
+                    frame[0].replace('<string>', 'code'),
+                    frame[1],
+                    frame[2].replace('<module>', ''),
+                    '' if frame[3] is None else frame[3]
+                ])
+            # Get line number from last entry
+            line = trace[len(trace)-1][1]
+            return {
+                'error': exc_type.__name__,
+                'message': traceback._some_str(exc_value),
+                'line': line,
+                'trace': trace
+            }
+        else:
+            return None
 
 
 class Scope(dict):
