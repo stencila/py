@@ -15,11 +15,11 @@ from werkzeug.serving import ThreadedWSGIServer
 
 class HttpServer:
 
-    def __init__(self, instance, address='127.0.0.1', port=None):
+    def __init__(self, instance, address='127.0.0.1', port=2000):
         self._instance = instance
         self._address = address
         self._port = port
-        self._server = None
+        self._server = port
 
     @property
     def origin(self):
@@ -49,7 +49,6 @@ class HttpServer:
             werkzeug._internal._logger = logger
 
             # Find an available port and serve on it
-            self._port = 2000
             if real:
                 while self._port < 65535:
                     try:
@@ -66,12 +65,12 @@ class HttpServer:
                         thread.daemon = True
                         thread.start()
                         break
-
-            return self.origin
         else:
             if real:
                 self._server.shutdown()
                 self._server = None
+
+        return self
 
     def __call__(self, environ, start_response):
         """
@@ -117,12 +116,12 @@ class HttpServer:
         if path == '/':
             return self.get, [None]
 
+        if path[:5] == '/new/':
+            return self.new, [path[5:]]
+
         match = self.instance_call_re.match(path)
         if match:
             return self.call, [None, match.group(1)]
-
-        if path[:5] == '/new/':
-            return self.new, [path[5:]]
 
         match = self.component_call_re.match(path)
         if match:
@@ -138,7 +137,7 @@ class HttpServer:
         url = '/' + self._instance.shorten(
             self._instance.new(type).address
         )
-        return Response('', status=302, headers=[('Location', url)])
+        return Response(status=302, headers=[('Location', url)])
 
     def get(self, request, address):
         content = self._instance.get(address, 'html')

@@ -52,6 +52,14 @@ def test_dispatch():
     assert s.dispatch('/mem://some/address!method') == (s.call, ['mem://some/address', 'method'])
 
 
+def test_web():
+    s = HttpServer(instance)
+
+    r = s.web(request(method='GET'), 'some/file.js')
+    assert r.status == '302 FOUND'
+    assert 'Location' in r.headers
+
+
 def test_get():
     s = HttpServer(instance)
     c = Session()
@@ -70,7 +78,7 @@ def test_call():
     r = s.call(request(
         method='PUT',
         data='{"expr":"6*7"}'
-    ), c.address, 'show')
+    ), c.address, 'print')
     assert r.status == '200 OK'
     assert r.data.decode('utf-8') == '"42"'
 
