@@ -33,7 +33,7 @@
 			"name": "Test one: run an individual test file",
 			"cmd":
 			[
-				"python", "-m", "pytest", "tests/$file_name"
+				"python", "-m", "pytest", "$file"
 			],
 			"working_dir": "."
 		},
