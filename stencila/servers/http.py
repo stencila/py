@@ -12,6 +12,8 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule, BaseConverter
 from werkzeug.serving import ThreadedWSGIServer
 
+from ..component import Component
+
 
 class HttpServer:
 
@@ -19,7 +21,7 @@ class HttpServer:
         self._instance = instance
         self._address = address
         self._port = port
-        self._server = port
+        self._server = None
 
     @property
     def origin(self):
@@ -80,18 +82,23 @@ class HttpServer:
         method output back into a JSON response
         """
         request = Request(environ)
-        method, args = self.dispatch(request.path)
+        method_args = self.route(request.method, request.path)
+        method = method_args[0]
+        args = method_args[1:]
 
         def respond():
-            if method == self.web:
+            if method in (self.web,):
                 return method(request, *args)
             else:
-                token_required = self._instance.token
-                token_provided = request.args.get('token')
-                if not token_provided:
-                    token_provided = request.cookies.get('token')
-                if token_provided != token_required:
-                    return Response(self._instance.login(), status=403)
+                # TODO Restrict if not listening to localhost and/or
+                # request is not from localhost
+                restricted = False
+                if restricted:
+                    token_provided = request.args.get('token')
+                    if not token_provided:
+                        token_provided = request.cookies.get('token')
+                    if token_provided != self._instance.token:
+                        return self.web(request, 'login.html')
                 try:
                     response = method(request, *args)
                 except Exception:
@@ -99,55 +106,70 @@ class HttpServer:
                     traceback.print_exc(file=stream)
                     response = Response(stream.getvalue(), status=500)
 
-                response.set_cookie('token', token_required)
+                if restricted:
+                    response.set_cookie('token', self._instance.token)
                 return response
 
         return respond()(environ, start_response)
 
-    instance_call_re = re.compile(r'^/!(.+)$')
-    component_call_re = re.compile(r'^/(.+?)!(.+)$')
-
-    def dispatch(self, path):
+    def route(self, method, path):
         if path == '/favicon.ico':
-            return self.web, ['images/favicon.ico']
+            return (self.web, 'images/favicon.ico')
         if path[:5] == '/web/':
-            return self.web, [path[5:]]
-
-        if path == '/':
-            return self.get, [None]
-
-        if path[:5] == '/new/':
-            return self.new, [path[5:]]
-
-        match = self.instance_call_re.match(path)
+            return (self.web, path[5:])
+        match = re.match(r'^/(.+?)?!(.+)$', path)
         if match:
-            return self.call, [None, match.group(1)]
-
-        match = self.component_call_re.match(path)
-        if match:
-            return self.call, list(match.groups())
-
-        return self.get, [path[1:]]
+            address = match.group(1)
+            name = match.group(2)
+            if method == 'GET':
+                return (self.get, address, name)
+            elif method == 'PUT':
+                return (self.set, address, name)
+            elif method == 'POST':
+                return (self.call, address, name)
+        return (self.show, path[1:])
 
     def web(self, request, path):
         url = 'http://127.0.0.1:9000/web/' + path
         return Response(status=302, headers=[('Location', url)])
 
-    def new(self, request, type):
-        url = '/' + self._instance.shorten(
-            self._instance.new(type).address
-        )
-        return Response(status=302, headers=[('Location', url)])
-
-    def get(self, request, address):
-        content = self._instance.get(address, 'html')
-        return Response(content, mimetype='text/html')
-
-    def call(self, request, address, method):
-        if request.data:
-            args = json.loads(request.data.decode('utf-8'))
+    def show(self, request, address):
+        component = self._instance.open(address)
+        if 'application/json' in request.headers.get('accept'):
+            content = component.show('json')
+            mimetype = 'application/json'
         else:
-            args = {}
-        result = self._instance.call(address, method, args)
-        content = json.dumps(result)
+            content = component.show('html')
+            mimetype = 'text/html'
+        return Response(content, mimetype=mimetype)
+
+    def get(self, request, address, name):
+        obj = self._instance.open(address)
+        result = getattr(obj, name)
+        return Response(json.dumps(result), mimetype='application/json')
+
+    def set(self, request, address, name):
+        if request.data:
+            obj = self._instance.open(address)
+            value = json.loads(request.data.decode())
+            setattr(obj, name, value)
+        return Response('', mimetype='application/json')
+
+    def call(self, request, address, name):
+        obj = self._instance.open(address)
+        method = getattr(obj, name)
+        if request.data:
+            args = json.loads(request.data.decode())
+            if type(args) is list:
+                result = method(*args)
+            elif type(args) is dict:
+                result = method(**args)
+            else:
+                result = method(args)
+        else:
+            result = method()
+        if isinstance(result, Component):
+            content = result.dump('json')
+        else:
+            content = json.dumps(result)
         return Response(content, mimetype='application/json')

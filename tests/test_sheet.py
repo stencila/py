@@ -10,5 +10,5 @@ def test_new():
     assert isinstance(s, Sheet)
     assert s.type == 'sheet'
     assert s in instance.components
-    assert instance.provide(s.address) is s
+    assert instance.open(s.address) is s
 

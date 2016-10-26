@@ -1,9 +1,7 @@
-import os
-
 from lxml import etree as xml
 
-from .component import Component
-from .utilities import path_to_format
+from .component import Component, RemoteComponent
+from .component_json import ComponentJson
 from .document_html import DocumentHtml
 from .document_xmd import DocumentXmd
 from .document_xtex import DocumentXtex
@@ -41,11 +39,13 @@ class Document(Component):
     def rmd(self, content):
         self.load(content, format='rmd')
 
-    @staticmethod
-    def converter(format):
+    @classmethod
+    def converter(cls, format):
         """
         Get the Document converter for a given format
         """
+        if format == 'json':
+            return ComponentJson()
         if format == 'html':
             return DocumentHtml()
         elif format in ('xmd', 'jsmd', 'pymd', 'rmd'):
@@ -59,38 +59,46 @@ class Document(Component):
 
     @staticmethod
     def know(path):
-        root, ext = os.path.splitext(path)
-        format = path_to_format(path)
+        format = Component.extension(path)
         try:
             Document.converter(format)
         except RuntimeError:
-            return False
+            return 'maybe'
         else:
-            return True
+            return 'yes'
 
-    def load(self, content, format='html', **options):
-        self.converter(format).load(self, content, format, **options)
-        return self
 
-    def dump(self, format='html', **options):
-        return self.converter(format).dump(self, format, **options)
+    # TODO move these to Component (?)
+    # #########################################
 
     def read(self, path='', format=None):
         path = Component.read(self, path)
         if format is None:
-            format = path_to_format(path)
+            format = self.extension(path)
         self.converter(format).read(self, path, format)
         return self
 
     def write(self, path='', format=None):
         path = Component.write(self, path)
         if format is None:
-            format = path_to_format(path)
+            format = self.extension(path)
         self.converter(format).write(self, path, format)
         return self
+
+    # #########################################
 
     def select(self, selector, type='css'):
         if type == 'css':
             return self._content.cssselect(selector)
         else:
             return self._content.xpath(selector)
+
+
+class RemoteDocument(RemoteComponent):
+
+    properties = RemoteComponent.properties + [
+        'html', 'md', 'rmd'
+    ]
+
+    methods = RemoteComponent.methods + [
+    ]

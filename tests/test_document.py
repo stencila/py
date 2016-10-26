@@ -11,7 +11,7 @@ def test_new():
     assert isinstance(d, Document)
     assert d.type == 'document'
     assert d in instance.components
-    assert instance.provide(d.address) is d
+    assert instance.open(d.address) is d
 
 
 def test_convert():

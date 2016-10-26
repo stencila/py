@@ -10,7 +10,7 @@ class ComponentMetaHtml(object):
     """
 
     def dump(self, component):
-        html = '<title>%s</title>\n' % component.title if component.title else 'Untitled'
+        html = '<title>%s</title>\n' % (component.title if component.title else component.address)
         html += '<meta name="address" content="%s">' % component.address
         if component.description:
             html += '<meta name="description" content="%s">\n' % component.description

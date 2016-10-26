@@ -1,8 +1,9 @@
 import argparse
-from six.moves import builtins
+import codecs
 import json
 import mimetypes
 import os
+import ctypes
 import platform
 import random
 import re
@@ -14,10 +15,11 @@ import uuid
 import requests
 
 from .version import __version__
-from .document import Document
+from .box import Box, RemoteBox
+from .document import Document, RemoteDocument
+from .frame import Frame, RemoteFrame
 from .sheet import Sheet
-from .session import Session
-from .context import Context
+from .session import Session, RemoteSession
 
 from .helpers.git import git, Git
 from .helpers import yaml_ as yaml
@@ -89,11 +91,15 @@ class Instance(object):
         )
         self._servers = {}
 
+        self._peers = []
+
         if config is None:
             self._config = InstanceConfig(self)
 
         if self._config['startup']['serve']:
             self.serve()
+
+        self.discover()
 
     @property
     def id(self):
@@ -107,38 +113,49 @@ class Instance(object):
     def logs(self):
         return self._logs
 
-    def resolve(self, address):
+    @property
+    def components(self):
+        return self._components
+
+    @property
+    def token(self):
+        return self._token
+
+    @property
+    def servers(self):
+        return self._servers
+
+    @property
+    def peers(self):
+        return self._peers
+
+    @staticmethod
+    def lengthen(address):
         """
-        Resolve a component address
+        Lengthen a component address
 
-        :param address: Address to be resolved
-        :returns: Resolved address for the component
+        :param address: Address to be lengthend
+        :returns: lengthend address for the component
 
-        This method resolve an address shortcut into a fully resolved address.
+        This method lengthen an address shortcut into a fully lengthend address.
         It does not attempt to obtain the component at the address.
 
-        >>> resolve('./report.docx')
+        >>> instance.lengthen('./report.docx')
         'file://home/susan/report.docx'
 
-        >>> resolve('gh/foo/bar/report.md')
+        >>> instance.lengthen('gh/foo/bar/report.md')
         'git://github.com/foo/bar/report.md'
 
-        >>> resolve('stats/t-test')
+        >>> instance.lengthen('stats/t-test')
         'git://stenci.la/stats/t-test'
 
         """
-        # full
-        if address[:6] == 'mem://':
+        if re.match(r'^[a-z]+://', address):
             return address
-        elif address[:7] == 'file://':
-            return address
-        elif address[:7] == 'http://' or address[:8] == 'https://':
-            return address
-        elif address[:6] == 'git://':
-            return address
-        # shortened
+        elif address[0] == '+':
+            return 'new://' + address[1:]
         elif address[0] == '~':
-            return 'mem://' + address[1:]
+            return 'id://' + address[1:]
         elif address[0] == '.' or address[0] == '/':
             return 'file://' + os.path.abspath(address)
         elif address[:3] == 'bb/':
@@ -150,10 +167,12 @@ class Instance(object):
         else:
             return 'git://stenci.la/' + address
 
-    def shorten(self, address):
-        address = self.resolve(address)
-        if address[:6] == 'mem://':
-            return '~' + address[6:]
+    @staticmethod
+    def shorten(address):
+        if address[:6] == 'new://':
+            return '+' + address[6:]
+        elif address[:5] == 'id://':
+            return '~' + address[5:]
         elif address[:7] == 'file://':
             return address[7:]
         elif address[:7] == 'http://' or address[:8] == 'https://':
@@ -167,59 +186,68 @@ class Instance(object):
         elif address[:16] == 'git://stenci.la/':
             return address[16:]
         else:
-            raise RuntimeError('Unrecognised address\n address: %s' % address)
+            raise RuntimeError('Unable to shortern address\n address: %s' % address)
 
-    def obtain(self, address, version=None):
+    @staticmethod
+    def split(address):
         """
-        Obtain a component
+        Split an address into scheme, path and version parts
+        """
+        address = Instance.lengthen(address)
+        match = re.match(r'([a-z]+)://([\w\-\./]+)(@([\w\-\.]+))?', address)
+        if match:
+            return match.group(1), match.group(2), match.group(4)
+        else:
+            raise RuntimeError('Unable to split address\n address: %s' % address)
+
+    def clone(self, address):
+        """
+        Create a copy of a component and return a path to a local file or directory
 
         :param address: A component address
         :returns: A local file system path to the component
 
-        Returns a file system path to a file or directory
+        Called clone mainly because of `git` and `dat`
 
-        >>> obtain('file://home/susan/report.docx')
+        >>> instance.clone('file://home/susan/report.docx')
         '/home/susan/report.docx'
 
-        >>> obtain('git://github.com/foo/bar/report.md')
+        >>> instance.clone('git://github.com/foo/bar/report.md')
         '/home/joe/.stencila/github.com/foo/bar/master/report.md'
 
-        >>> obtain('git://stenci.la/stats/t-test', '1.2.3')
+        >>> instance.clone('stats/t-test@1.2.3')
         '/home/joe/.stencila/stats/t-test/1.2.3/'
 
-        Used by other ``Component`` methods when loading content.
-
         """
-        address = self.resolve(address)
-        path = None
+        scheme, path, version = Instance.split(address)
 
-        if address[:6] == 'mem://':
+        if scheme in ('new' 'mem'):
             return None
-        elif address[:7] == 'file://':
-            path = address[7:]
+        elif scheme == 'file':
             if os.path.exists(path):
                 return path
             else:
-                raise IOError('Filesystem path does not exist\n  address: %s\n  path: %s' % (address, path))
-        elif address[:7] == 'http://' or address[:8] == 'https://':
-            response = requests.get(address)
+                raise IOError('Local file system path does not exist\n  path: %s' % path)
+        elif scheme in ('http', 'https'):
+            url = '%s://%s' % (scheme, path)
+            response = requests.get(url)
             if response.status_code == 200:
-                root, extension = os.path.splitext(address)
+                root, extension = os.path.splitext(path)
                 if not extension:
                     type = response.headers.get('Content-Type', None)
                     extension = mimetypes.guess_extension(type)
                 handle, path = tempfile.mkstemp(extension)
-                with builtins.open(path, 'w') as file:
-                    file.write(response.text.encode('utf-8'))
+                with codecs.open(path, 'w', encoding='utf-8') as file:
+                    file.write(response.text)
                 return path
             else:
                 raise IOError(
-                    'Unable to obtain HTTP address\n  address: %s\n  status code: %s\n  message: %s' % (
-                        address, response.status_code, response.text
+                    'Unable to get HTTP/S URL\n  url: %s\n  status code: %s\n  message: %s' % (
+                        url, response.status_code, response.text
                     )
                 )
-        elif address[:6] == 'git://':
-            match = re.match('git://([\w\-\.]+)/([\w\-]+/[\w\-]+)/(.+)$', address)
+        elif scheme == 'git':
+            match = re.match('([\w\-\.]+)/([\w\-]+/[\w\-]+)/(.+)$', path)
             if match:
                 host = match.group(1)
                 if host == 'stenci.la':
@@ -255,61 +283,94 @@ class Instance(object):
             else:
                 raise RuntimeError('Unable to determine Git repository URL from address\n  address: %s' % address)
         else:
-            raise RuntimeError('Unhandled address\n  address: %s' % address)
+            raise RuntimeError('Unable to get address\n  address: %s' % address)
 
     def register(self, component):
         self._components.append(component)
-
-    @property
-    def components(self):
-        return self._components
-
-    def provide(self, address):
-        address = self.resolve(address)
-        for component in self._components:
-            if component.address == address:
-                return component
-        return None
 
     def deregister(self, component):
         if component in self._components:
             index = self._components.index(component)
             self._components.pop(index)
 
-    def new(self, type):
-        if type == 'document':
-            return Document()
-        elif type == 'sheet':
-            return Sheet()
-        elif type == 'session':
-            return Session()
-        elif type == 'context':
-            return Context()
-        else:
-            raise RuntimeError('Unhandled component type\n  type: %s' % type)
-
     def open(self, address):
-        component = self.provide(address)
-        if component:
-            return component
+        """
+        Open a component address
+        """
+        if address is None:
+            return self
 
-        path = self.obtain(address)
-        if path is None:
-            addresses = [com.address for com in self._components]
-            raise RuntimeError('Not able to find in-memory component\n  address: %s\n  addresses: %s' % (address, addresses))
+        scheme, path, version = self.split(address)
 
-        for clazz in [Document, Sheet, Session, Context]:
-            if clazz.know(path):
-                return clazz(address, path)
+        if scheme == 'new':
+            if path == 'document':
+                return Document()
+            elif path == 'sheet':
+                return Sheet()
+            elif path == 'frame':
+                return Frame()
+            elif path == 'session' or path == 'py-session':
+                return Session()
+            elif path == 'context':
+                return Box()
+            else:
+                raise RuntimeError('Unable to create new component of type\n  address: %s\n  type: %s' % (address, path))
 
-        raise RuntimeError('Not able to determine component type from path\n  path: %s' % path)
+        for component in self._components:
+            if scheme == 'id':
+                if component.id == path:
+                    return component
+            else:
+                if component.address == scheme + '://' + path:
+                    return component
 
-    @property
-    def token(self):
-        return self._token
+        path = self.clone(address)
+        for cls in [Document, Sheet, Frame, Session, Box]:
+            component = cls.open(address, path)
+            if component is not None:
+                return component
+        raise RuntimeError('Unable to open a component from the local path\n  address: %s\n path: %s' % (address, path))
+
+        remote = self.ask(address)
+        if remote:
+            return remote
+
+        raise RuntimeError('Unable to open address\n address: ' + address)
+
+    def show(self, format='html', authenticated=True):
+        if format == 'json':
+            data = {
+                'stencila': self.id,
+                'package': 'py',
+                'version': __version__
+            }
+            if authenticated:
+                data.update({
+                    'components': [dict(type=com.type, address=com.address) for com in self._components],
+                    'servers': dict([(type, server.origin) for type, server in self._servers.items()]),
+                })
+            return json.dumps(data)
+        else:
+            return '''<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="/web/instance.min.css">
+    </head>
+    <body>
+        <script id="data" type="application/json">%s</script>
+        <script src="/web/instance.min.js"></script>
+    </body>
+</html>''' % self.show(format='json')
 
     def serve(self, types=['http'], real=True):
         if type(types) is list and len(types) > 0:
+            try:
+                admin = os.getuid() == 0
+            except AttributeError:
+                admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+            if admin:
+                raise RuntimeError('For security reasons, no servers are started when system admin rights')
+
             for typ in types:
                 if typ not in self._servers:
                     if typ == 'http':
@@ -321,48 +382,6 @@ class Instance(object):
             for typ, server in self._servers.iteritems():
                 server.serve(on=False, real=real)
             return None
-
-    html = '''<!DOCTYPE html>
-<html>
-    <head>
-        <link rel="stylesheet" type="text/css" href="/web/instance.min.css">
-    </head>
-    <body>
-        <script id="data" type="application/json">%s</script>
-        <script src="/web/instance.min.js"></script>
-    </body>
-</html>'''
-
-    def login(self):
-        return self.html % json.dumps({
-            'stencila': self.id,
-            'package': 'py',
-            'version': __version__,
-            'login': True,
-        })
-
-    def get(self, address, format='html'):
-        if address is not None:
-            component = self.open(address)
-            return component.get(format)
-        else:
-            if format == 'data':
-                return {
-                    'stencila': self.id,
-                    'package': 'py',
-                    'version': __version__,
-                    'components': [(com.type, com.address) for com in self._components],
-                    'servers': dict([(type, server.origin) for type, server in self._servers.items()]),
-                }
-            else:
-                return self.html % json.dumps(self.get(None, format='data'))
-
-    def call(self, address, method, args):
-        if address is None:
-            obj = self
-        else:
-            obj = self.open(address)
-        return getattr(obj, method)(**args)
 
     def url(self, component=None):
         url = self._servers['http'].origin
@@ -377,3 +396,48 @@ class Instance(object):
             subprocess.call('2>/dev/null 1>&2 xdg-open "%s"' % url, shell=True)
         else:
             subprocess.call('open "%s"' % url, shell=True)
+
+    def manifest(self):
+        return {
+            'stencila': True,
+            'package': 'py',
+            'id': 0,
+            'url': self.url(),
+            'schemes': ['new'],
+            'types': ['document', 'py-session'],
+            'formats': ['md']
+        }
+
+    def hello(self, manifest):
+        return self.manifest()
+
+    def discover(self):
+        self._peers = {}
+        for port in range(2000, 3000, 10):
+            if port != self._servers['http']._port:
+                url = 'http://127.0.0.1:%s' % port
+                try:
+                    response = requests.get(url + '/hello', headers={'Accept': 'application/json'}, timeout=0.1)
+                except requests.exceptions.RequestException:
+                    pass
+                else:
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get('stencila'):
+                            self._peers[url] = data
+        return self._peers
+
+    def ask(self, address):
+        for peer in self._peers:
+            response = requests.post(peer + '/' + address, headers={'Accept': 'application/json'})
+            if response.status_code == 200:
+                data = response.json()
+                typ = data['type']
+                if typ == 'document':
+                    return RemoteDocument(peer, data['address'])
+                elif typ == 'session':
+                    return RemoteSession(peer, data['address'])
+                else:
+                    raise RuntimeError('Unable to handle a remote component\n  type: %s' % typ)
+            else:
+                raise RuntimeError('Error\n  message: %s' % response.text)

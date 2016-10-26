@@ -3,9 +3,7 @@ from six import exec_
 import sys
 import traceback
 
-import pystache
-
-from .component import Component
+from .component import Component, RemoteComponent
 
 
 class Session(Component):
@@ -18,6 +16,9 @@ class Session(Component):
         self._scopes = [top]
 
         self._history = []
+
+    def object(self, name):
+        return self._top()[name]
 
     def objects(self):
         objects = {}
@@ -53,31 +54,6 @@ class Session(Component):
             return self.print_
         else:
             raise AttributeError(name)
-
-    def content(self, format='html'):
-        return pystache.render('''
-<ul>
-    {{#objects}}
-        <li>
-            <span class="name">{{name}}<span>
-            <span class="type">{{type}}</span>
-        </li>
-    {{/objects}}
-</ul>
-<ol>
-    {{#history}}
-        <li><pre><code>{{input}}</code></pre><pre><code>{{output}}</code></pre></li>
-    {{/history}}
-</ol>
-        ''', {
-            'objects': [dict(name=name, type=type) for name, type in self.objects().items()],
-            'history': self.history
-        })
-
-
-    def write(self):
-        # Pickle
-        pass
 
     # Shortcut methods for accessing the scope stack
 
@@ -145,3 +121,13 @@ class Scope(dict):
                 return self.parent[name]
             else:
                 raise KeyError(name)
+
+
+class RemoteSession(RemoteComponent):
+
+    properties = RemoteComponent.properties + [
+    ]
+
+    methods = RemoteComponent.methods + [
+        'execute', 'print_', 'print'
+    ]

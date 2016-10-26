@@ -3,6 +3,9 @@ all: setup build
 setup:
 	pip install --user setuptools wheel tox twine sphinx sphinx-autobuild
 
+run:
+	python -m stencila
+
 build:
 	python setup.py bdist_wheel
 .PHONY: build

@@ -1,3 +1,6 @@
+import codecs
+
+
 class ComponentConverter(object):
     """
     The base class for Component converters
@@ -23,12 +26,12 @@ class ComponentConverter(object):
         """
         Read a document from a file
         """
-        with open(path) as file:
+        with codecs.open(path, encoding='utf-8') as file:
             self.load(doc, file.read(), format, **options)
 
     def write(self, doc, path, format, **options):
         """
         Write a document to a file
         """
-        with open(path, 'w') as file:
+        with codecs.open(path, 'w', encoding='utf-8') as file:
             file.write(self.dump(doc, format, **options))
