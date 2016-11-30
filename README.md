@@ -1,10 +1,15 @@
-## `stencila/py`
+## `stencila/py` : Stencila for Python
 
 [![Build status](https://travis-ci.org/stencila/py.svg?branch=master)](https://travis-ci.org/stencila/py)
 [![Code coverage](https://codecov.io/gh/stencila/py/branch/master/graph/badge.svg)](https://codecov.io/gh/stencila/py)
 [![Chat](https://badges.gitter.im/stencila/stencila.svg)](https://gitter.im/stencila/stencila)
- 
-Stencila components for Python
+
+### Status
+
+![](http://blog.stenci.la/wip.png)
+
+This is very much a work in progress. See our [main repo](https://github.com/stencila/stencila) for more details.
+
 
 ### Install
 
@@ -14,7 +19,7 @@ Right now this package isn't on PyPI, but you can install it from here:
 pip install --user https://github.com/stencila/py/archive/master.zip
 ```
 
-### Development
+### Develop
 
 Most development tasks can be run using the usual Python tool commands or `make` recipes which wrap them.
 
