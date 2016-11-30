@@ -1,12 +1,23 @@
 from io import BytesIO
+from code import InteractiveConsole
 from six import exec_
 import sys
 import traceback
+from contextlib import contextmanager
 
 from .component import Component, RemoteComponent
 
 
-class Session(Component):
+@contextmanager
+def redirect(out=sys.stdout, err=sys.stderr):
+    sys.stdout, sys.stderr = out, err
+    try:
+        yield
+    finally:
+        sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
+
+
+class PySession(Component):
 
     def __init__(self, top=None):
         Component.__init__(self)
@@ -16,6 +27,14 @@ class Session(Component):
         self._scopes = [top]
 
         self._history = []
+
+    @property
+    def type(self):
+        return 'py-session'
+
+    @property
+    def kind(self):
+        return 'session'
 
     def object(self, name):
         return self._top()[name]
@@ -30,8 +49,29 @@ class Session(Component):
     def history(self):
         return self._history
 
-    def execute(self, code):
-        return self._eval(code, exe=True)
+    def execute(self, code, pipes=[]):
+        #return self._eval(code, exe=True)
+        #
+        # A temporary implementation...
+        ic = InteractiveConsole()
+        out = BytesIO()
+        err = BytesIO()
+
+        lines = code.strip().split()
+
+        if len(lines) > 0:
+            for line in lines:
+                with redirect(out, err):
+                    ic.push(line)
+
+        return {
+            'errors': None,
+            'output': {
+                'format': 'json',
+                'content': out.getvalue()
+            },
+            'pipes': None
+        }
 
     def run(self, code):
         result = self._eval(code, exe=True)

@@ -20,6 +20,8 @@ class Component(object):
 
         :param address: The address of the component
         """
+        self._id = os.urandom(32).encode('hex')
+
         from .instance_ import instance
         if address:
             self._address = instance.lengthen(address)
@@ -29,12 +31,8 @@ class Component(object):
                 self._path = instance.clone(self._address)
             self.read()
         else:
-            self._address = 'mem://' + ''.join(
-                [random.choice(string.ascii_lowercase+string.digits) for i in range(12)]
-            )
+            self._address = 'id://' + self._id
             self._path = None
-
-        self._id = os.urandom(32).encode('hex')
 
         self._meta = {}
 
@@ -70,6 +68,10 @@ class Component(object):
     @property
     def type(self):
         return self.__class__.__name__.lower()
+
+    @property
+    def kind(self):
+        return self.type
 
     @property
     def id(self):
@@ -209,18 +211,18 @@ class Component(object):
             %(meta)s
             <meta name="generator" content="stencila-%(package)s-%(version)s">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <link rel="stylesheet" type="text/css" href="/web/%(type)s.min.css">
+            <link rel="stylesheet" type="text/css" href="/web/%(kind)s.min.css">
         </head>
         <body>
-            <main id="content">%(content)s</main>
-            <script src="/web/%(type)s.min.js"></script>
+            <script id="data" data-format="json" type="application/json">%(json)s</script>
+            <script src="/web/%(kind)s.min.js"></script>
         </body>
     </html>''' % {
                 'meta': ComponentMetaHtml().dump(self),
                 'package': 'py',
                 'version': __version__,
-                'type': self.type,
-                'content': self.dump('html')
+                'kind': self.kind,
+                'json': self.dump('json')
             }
         else:
             return self.dump('json')

@@ -12,6 +12,7 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule, BaseConverter
 from werkzeug.serving import ThreadedWSGIServer
 
+from ..version import __version__
 from ..component import Component
 
 
@@ -108,6 +109,9 @@ class HttpServer:
 
                 if restricted:
                     response.set_cookie('token', self._instance.token)
+
+                response.headers['Server'] = 'stencila-py-' + __version__
+
                 return response
 
         return respond()(environ, start_response)

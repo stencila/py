@@ -15,11 +15,10 @@ import uuid
 import requests
 
 from .version import __version__
-from .box import Box, RemoteBox
 from .document import Document, RemoteDocument
 from .frame import Frame, RemoteFrame
 from .sheet import Sheet
-from .session import Session, RemoteSession
+from .py_session import PySession, RemoteSession
 
 from .helpers.git import git, Git
 from .helpers import yaml_ as yaml
@@ -309,8 +308,8 @@ class Instance(object):
                 return Sheet()
             elif path == 'frame':
                 return Frame()
-            elif path == 'session' or path == 'py-session':
-                return Session()
+            elif path == 'py-session':
+                return PySession()
             elif path == 'context':
                 return Box()
             else:
