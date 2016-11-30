@@ -131,7 +131,10 @@ class HttpServer:
                 return (self.set, address, name)
             elif method == 'POST':
                 return (self.call, address, name)
-        return (self.show, path[1:])
+        address = path[1:]
+        if address == '':
+            address = None
+        return (self.show, address)
 
     def web(self, request, path):
         url = 'http://127.0.0.1:9000/web/' + path

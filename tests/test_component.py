@@ -12,7 +12,7 @@ def test_new():
     assert isinstance(c, Component)
     assert c in instance.components
     assert instance.open(c.address) is c
-    assert re.match('^mem://[a-z0-9]+$', c.address)
+    assert re.match('^id://[a-z0-9]+$', c.address)
     assert repr(c) == 'Component(%s)' % c.address
 
 

@@ -20,7 +20,7 @@ class Component(object):
 
         :param address: The address of the component
         """
-        self._id = os.urandom(32).encode('hex')
+        self._id = '%0x' % random.getrandbits(32 * 4)
 
         from .instance_ import instance
         if address:
@@ -308,7 +308,6 @@ class RemoteComponentMethod(object):
         name = self._name
         if name in remote.methods:
             url = '%s/%s!%s' % (remote._host, remote._address, name)
-            print 'trying to set property', url
             response = requests.post(url, json=kwargs) # TODO meld args and kwargs
             return response.json()
         elif name in remote.properties:

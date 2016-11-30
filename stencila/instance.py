@@ -16,8 +16,6 @@ import requests
 
 from .version import __version__
 from .document import Document, RemoteDocument
-from .frame import Frame, RemoteFrame
-from .sheet import Sheet
 from .py_session import PySession, RemoteSession
 
 from .helpers.git import git, Git
@@ -32,7 +30,8 @@ class InstanceConfig(dict):
     def __init__(self, instance):
         # Defaults
         self['startup'] = {
-            'serve': True
+            'serve': False,
+            'discover': False
         }
 
         # User config file overrides
@@ -98,7 +97,8 @@ class Instance(object):
         if self._config['startup']['serve']:
             self.serve()
 
-        self.discover()
+        if self._config['startup']['discover']:
+            self.discover()
 
     @property
     def id(self):
@@ -304,14 +304,8 @@ class Instance(object):
         if scheme == 'new':
             if path == 'document':
                 return Document()
-            elif path == 'sheet':
-                return Sheet()
-            elif path == 'frame':
-                return Frame()
             elif path == 'py-session':
                 return PySession()
-            elif path == 'context':
-                return Box()
             else:
                 raise RuntimeError('Unable to create new component of type\n  address: %s\n  type: %s' % (address, path))
 
@@ -324,7 +318,7 @@ class Instance(object):
                     return component
 
         path = self.clone(address)
-        for cls in [Document, Sheet, Frame, Session, Box]:
+        for cls in [Document, PySession]:
             component = cls.open(address, path)
             if component is not None:
                 return component

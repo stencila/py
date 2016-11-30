@@ -31,7 +31,7 @@ def test_know():
     assert Document.know(here + 'document.md')
     assert Document.know(here + 'document.odt')
     assert Document.know(here + 'document.docx')
-    assert not Document.know('document.foo')
+    assert Document.know('document.foo') == 'maybe'
 
 
 def test_read():

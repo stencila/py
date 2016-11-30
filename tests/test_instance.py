@@ -2,17 +2,16 @@ import os
 import re
 import tempfile
 
-from stencila import instance, Instance, Document, Sheet, Session, Context
+from stencila import instance, Instance, Document
 
 import pytest
 from marks import slow
 
-
 def test_instance():
     assert isinstance(instance, Instance)
 
-
-def skip_test_config():
+@pytest.mark.skip
+def test_config():
     os.environ['STENCILA_STARTUP_SERVE'] = 'false'
     instance = Instance()
     assert instance._config['startup']['serve'] is False
@@ -23,7 +22,7 @@ def test_lengthen():
     assert Instance.lengthen('ftp://foo/bar') == 'ftp://foo/bar'
 
     assert Instance.lengthen('+document') == 'new://document'
-    assert Instance.lengthen('~aaaaaaaa') == 'mem://aaaaaaaa'
+    assert Instance.lengthen('~aaaaaaaa') == 'id://aaaaaaaa'
     assert Instance.lengthen('./report.docx') == 'file://' + os.getcwd() + '/report.docx'
     assert Instance.lengthen('https://foo.com/report.md') == 'https://foo.com/report.md'
     assert Instance.lengthen('bb/foo/bar/report.md') == 'git://bitbucket.org/foo/bar/report.md'
@@ -34,7 +33,7 @@ def test_lengthen():
 
 def test_shorten():
     assert Instance.shorten('new://document') == '+document'
-    assert Instance.shorten('mem://aaaaaaaa') == '~aaaaaaaa'
+    assert Instance.shorten('id://aaaaaaaa') == '~aaaaaaaa'
     assert Instance.shorten('file://' + os.getcwd() + '/report.docx') == os.getcwd() + '/report.docx'
     assert Instance.shorten('https://foo.com/report.md') == 'https://foo.com/report.md'
     assert Instance.shorten('git://bitbucket.org/foo/bar/report.md') == 'bb/foo/bar/report.md'
@@ -50,19 +49,20 @@ def test_lengthen_shorten():
     assert ls('+document') == '+document'
     assert ls('new://document') == '+document'
     assert ls('~aaaaaaaa') == '~aaaaaaaa'
-    assert ls('mem://aaaaaaaa') == '~aaaaaaaa'
+    assert ls('id://aaaaaaaa') == '~aaaaaaaa'
     assert ls('gh/foo/bar/report.md') == 'gh/foo/bar/report.md'
     assert ls('gh/foo/bar/report.md@1.1.0') == 'gh/foo/bar/report.md@1.1.0'
 
 
 def test_split():
     assert Instance.split('+document') == ('new', 'document', None)
-    assert Instance.split('~aaaaaaaa') == ('mem', 'aaaaaaaa', None)
+    assert Instance.split('~aaaaaaaa') == ('id', 'aaaaaaaa', None)
 
     assert Instance.split('stats/t-test') == ('git', 'stenci.la/stats/t-test', None)
     assert Instance.split('stats/t-test@1.1.0') == ('git', 'stenci.la/stats/t-test', '1.1.0')
 
 
+@pytest.mark.skip
 def test_know():
     assert Instance.know('+document') == 'yes'
     assert Instance.know('~aaaaaaaa') == 'yes'
@@ -112,7 +112,7 @@ def test_clone_git():
 def test_open_new():
     d = instance.open('+document')
     assert d.type == 'document'
-    assert re.match(r'^mem://', d.address)
+    assert re.match(r'^id://', d.address)
 
 
 def test_open_mem():
