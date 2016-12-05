@@ -1,6 +1,6 @@
 import re
 
-from stencila import instance, PySession
+from stencila import host, PySession
 from stencila.servers.http import HttpServer
 
 from werkzeug.wrappers import Request, Response
@@ -15,7 +15,7 @@ def request(**kwargs):
 
 @pytest.mark.skip
 def stest_serve():
-    s = HttpServer(instance)
+    s = HttpServer(host)
     c = Client(s, Response)
 
     s.serve()
@@ -26,7 +26,7 @@ def stest_serve():
     assert r.status == '403 FORBIDDEN'
     assert not re.search('components', r.data.decode('utf-8')), 'is not authenticated'
 
-    r = c.get('/?token='+instance.token)
+    r = c.get('/?token='+host.token)
     assert r.status == '200 OK'
     assert re.search('components', r.data.decode('utf-8')), 'is authenticated'
 
@@ -54,7 +54,7 @@ def test_route():
 
 
 def test_web():
-    s = HttpServer(instance)
+    s = HttpServer(host)
 
     r = s.web(request(method='GET'), 'some/file.js')
     assert r.status == '302 FOUND'
@@ -62,7 +62,7 @@ def test_web():
 
 
 def test_get():
-    s = HttpServer(instance)
+    s = HttpServer(host)
     c = PySession()
 
     r = s.get(request(
@@ -73,7 +73,7 @@ def test_get():
 
 
 def test_call():
-    s = HttpServer(instance)
+    s = HttpServer(host)
     c = PySession()
 
     r = s.call(request(

@@ -6,7 +6,7 @@ import string
 import requests
 
 from .version import __version__
-from . import instance_
+from . import host_
 from .component_html import ComponentHtml
 from .component_json import ComponentJson
 from .component_meta_html import ComponentMetaHtml
@@ -22,13 +22,13 @@ class Component(object):
         """
         self._id = '%0x' % random.getrandbits(32 * 4)
 
-        from .instance_ import instance
+        from .host_ import host
         if address:
-            self._address = instance.lengthen(address)
+            self._address = host.lengthen(address)
             if path:
                 self._path = path
             else:
-                self._path = instance.clone(self._address)
+                self._path = host.clone(self._address)
             self.read()
         else:
             self._address = 'id://' + self._id
@@ -36,17 +36,17 @@ class Component(object):
 
         self._meta = {}
 
-        instance.register(self)
+        host.register(self)
 
     def __del__(self):
-        # On final garbage collection, the instance may not
+        # On final garbage collection, the host may not
         # exists, so deal with that
         try:
-            from .instance_ import instance
+            from .host_ import host
         except ValueError:
             pass
         else:
-            instance.deregister(self)
+            host.deregister(self)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.address)
@@ -229,12 +229,12 @@ class Component(object):
 
     @property
     def url(self):
-        from .instance_ import instance
-        return instance.url(self)
+        from .host_ import host
+        return host.url(self)
 
     def view(self):
-        from .instance_ import instance
-        return instance.view(self)
+        from .host_ import host
+        return host.view(self)
 
 
 class RemoteComponent(object):

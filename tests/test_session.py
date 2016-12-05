@@ -1,4 +1,4 @@
-from stencila import instance, PySession
+from stencila import host, PySession
 
 import pytest
 
@@ -6,7 +6,7 @@ def test_new():
     s = PySession()
 
     assert isinstance(s, PySession)
-    assert s in instance.components
+    assert s in host.components
 
 
 @pytest.mark.skip

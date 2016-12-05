@@ -22,10 +22,10 @@ from .helpers.git import git, Git
 from .helpers import yaml_ as yaml
 from .servers.http import HttpServer
 from .utilities import update
-from . import instance_
+from . import host_
 
 
-class InstanceConfig(dict):
+class HostConfig(dict):
 
     def __init__(self, instance):
         # Defaults
@@ -57,12 +57,12 @@ class InstanceConfig(dict):
             self['startup']['serve'] = args.startup_serve in ('true', '1')
 
 
-class Instance(object):
+class Host(object):
     """
-    The Stencila instance.
+    The Stencila host.
 
     Orchestrates ``Components`` and encapsulates application state.
-    This is a singleton class; there should only ever be one ``Instance``
+    This is a singleton class; there should only ever be one ``Host``
     in memory in each Python process (although this is not enforced for purposes of testing)
     """
 
@@ -72,8 +72,8 @@ class Instance(object):
 
 
         """
-        if not instance_.instance:
-            instance_.instance = self
+        if not host_.host:
+            host_.host = self
 
         self._id = str(uuid.uuid1())
 
@@ -92,7 +92,7 @@ class Instance(object):
         self._peers = []
 
         if config is None:
-            self._config = InstanceConfig(self)
+            self._config = HostConfig(self)
 
         if self._config['startup']['serve']:
             self.serve()
@@ -192,7 +192,7 @@ class Instance(object):
         """
         Split an address into scheme, path and version parts
         """
-        address = Instance.lengthen(address)
+        address = Host.lengthen(address)
         match = re.match(r'([a-z]+)://([\w\-\./]+)(@([\w\-\.]+))?', address)
         if match:
             return match.group(1), match.group(2), match.group(4)
@@ -218,7 +218,7 @@ class Instance(object):
         '/home/joe/.stencila/stats/t-test/1.2.3/'
 
         """
-        scheme, path, version = Instance.split(address)
+        scheme, path, version = Host.split(address)
 
         if scheme in ('new' 'mem'):
             return None

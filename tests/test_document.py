@@ -1,7 +1,7 @@
 from os.path import dirname, abspath
 import tempfile
 
-from stencila import instance, Document
+from stencila import host, Document
 
 here = dirname(abspath(__file__)) + '/'
 
@@ -10,8 +10,8 @@ def test_new():
     d = Document()
     assert isinstance(d, Document)
     assert d.type == 'document'
-    assert d in instance.components
-    assert instance.open(d.address) is d
+    assert d in host.components
+    assert host.open(d.address) is d
 
 
 def test_convert():
