@@ -14,7 +14,7 @@ setup(
     author_email='nokome@stenci.la',
 
     url='https://github.com/stencila/py',
-    license='GPL-3',
+    license='Apache-2.0',
 
     packages=[
         'stencila',
