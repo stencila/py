@@ -16,6 +16,7 @@ Contents:
    sheet
    context
    session
+   packing
 
    helpers/git
 
