@@ -21,6 +21,8 @@ pip install --user https://github.com/stencila/py/archive/master.zip
 
 ### Develop
 
+Want to help out with development? Great, there's a lot to do! To get started, read our contributor [code of conduct](CONDUCT.md), then [get in touch](https://gitter.im/stencila/stencila) or checkout the [platform-wide, cross-repository kanban board](https://github.com/orgs/stencila/projects/1).
+
 Most development tasks can be run using the usual Python tool commands or `make` recipes which wrap them.
 
 Task                                                    | `make`       |   Python tooling      
