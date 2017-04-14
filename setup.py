@@ -17,8 +17,7 @@ setup(
     license='Apache-2.0',
 
     packages=[
-        'stencila',
-        'stencila/servers'
+        'stencila'
     ],
 
     install_requires=[

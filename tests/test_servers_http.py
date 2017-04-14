@@ -1,7 +1,7 @@
 import re
 
 from stencila import host, PySession
-from stencila.servers.http import HttpServer
+from stencila.host_http_server import HostHttpServer
 
 from werkzeug.wrappers import Request, Response
 from werkzeug.test import Client, EnvironBuilder
@@ -15,7 +15,7 @@ def request(**kwargs):
 
 @pytest.mark.skip
 def stest_serve():
-    s = HttpServer(host)
+    s = HostHttpServer(host)
     c = Client(s, Response)
 
     s.serve()
@@ -40,7 +40,7 @@ def stest_serve():
 
 @pytest.mark.skip
 def test_route():
-    s = HttpServer(None)
+    s = HostHttpServer(None)
 
     assert s.route('GET', '/web/some/file.js') == (s.web, 'some/file.js')
     assert s.route('GET', '/favicon.ico') == (s.web, 'images/favicon.ico')
@@ -56,7 +56,7 @@ def test_route():
 
 @pytest.mark.skip
 def test_web():
-    s = HttpServer(host)
+    s = HostHttpServer(host)
 
     r = s.web(request(method='GET'), 'some/file.js')
     assert r.status == '302 FOUND'
@@ -65,7 +65,7 @@ def test_web():
 
 @pytest.mark.skip
 def test_get():
-    s = HttpServer(host)
+    s = HostHttpServer(host)
     c = PySession()
 
     r = s.get(request(
@@ -77,7 +77,7 @@ def test_get():
 
 @pytest.mark.skip
 def test_call():
-    s = HttpServer(host)
+    s = HostHttpServer(host)
     c = PySession()
 
     r = s.call(request(

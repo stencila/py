@@ -15,7 +15,7 @@ import uuid
 from .version import __version__
 from .py_session import PySession
 
-from .servers.http import HttpServer
+from .host_http_server import HostHttpServer
 from . import host_
 
 
@@ -361,7 +361,7 @@ class Host(object):
             for typ in types:
                 if typ not in self._servers:
                     if typ == 'http':
-                        server = HttpServer(self)
+                        server = HostHttpServer(self)
                     server.serve(on=True, real=real)
                     self._servers[typ] = server
             return self.url()
