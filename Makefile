@@ -32,4 +32,4 @@ docs:
 .PHONY: docs
 
 clean:
-	rm -rf build dist stencila.egg-info .tox .cache .coverage coverage.xml docs/_build
+	rm -rf stencila/*.pyc build dist stencila.egg-info .tox .cache .coverage coverage.xml docs/_build
