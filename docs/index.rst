@@ -11,14 +11,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   component
-   document
-   sheet
    context
-   session
    packing
-
-   helpers/git
 
 Indices and tables
 ==================

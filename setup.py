@@ -4,7 +4,7 @@ setup(
     name='stencila',
     version='0.1.0',
 
-    description='Stencila Documents, Sheets, Contexts and Sessions for Python',
+    description='Stencila for Python',
     long_description='''
         Stencila is a platform for creating, collaborating on, and publishing
         data driven documents.
@@ -18,18 +18,11 @@ setup(
 
     packages=[
         'stencila',
-        'stencila/helpers',
-        'stencila/servers',
-        'stencila/utilities'
+        'stencila/servers'
     ],
 
     install_requires=[
-        'cssselect',
-        'lxml',
         'pandas',
-        'pyaml',
-        'pyyaml',
-        'requests',
         'six',
         'werkzeug',
     ]

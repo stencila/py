@@ -13,10 +13,9 @@ from werkzeug.routing import Map, Rule, BaseConverter
 from werkzeug.serving import ThreadedWSGIServer
 
 from ..version import __version__
-from ..component import Component
 
 
-class HttpServer:
+class HttpServer(object):
 
     def __init__(self, instance, address='127.0.0.1', port=2000):
         self._instance = instance

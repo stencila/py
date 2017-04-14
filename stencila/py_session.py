@@ -5,8 +5,6 @@ import sys
 import traceback
 from contextlib import contextmanager
 
-from .component import Component, RemoteComponent
-
 
 @contextmanager
 def redirect(out=sys.stdout, err=sys.stderr):
@@ -17,11 +15,9 @@ def redirect(out=sys.stdout, err=sys.stderr):
         sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
 
 
-class PySession(Component):
+class PySession(object):
 
     def __init__(self, top=None):
-        Component.__init__(self)
-
         if top is None:
             top = Scope()
         self._scopes = [top]
@@ -161,13 +157,3 @@ class Scope(dict):
                 return self.parent[name]
             else:
                 raise KeyError(name)
-
-
-class RemoteSession(RemoteComponent):
-
-    properties = RemoteComponent.properties + [
-    ]
-
-    methods = RemoteComponent.methods + [
-        'execute', 'print_', 'print'
-    ]

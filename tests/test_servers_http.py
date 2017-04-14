@@ -38,6 +38,7 @@ def stest_serve():
     assert s.status == 'off'
 
 
+@pytest.mark.skip
 def test_route():
     s = HttpServer(None)
 
@@ -53,6 +54,7 @@ def test_route():
     assert s.route('POST', '/id://some/address!method') == (s.call, 'id://some/address', 'method')
 
 
+@pytest.mark.skip
 def test_web():
     s = HttpServer(host)
 
@@ -61,6 +63,7 @@ def test_web():
     assert 'Location' in r.headers
 
 
+@pytest.mark.skip
 def test_get():
     s = HttpServer(host)
     c = PySession()
@@ -72,6 +75,7 @@ def test_get():
     assert r.data.decode('utf-8') == '"py-session"'
 
 
+@pytest.mark.skip
 def test_call():
     s = HttpServer(host)
     c = PySession()

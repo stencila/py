@@ -12,16 +12,10 @@ import subprocess
 import tempfile
 import uuid
 
-import requests
-
 from .version import __version__
-from .document import Document, RemoteDocument
-from .py_session import PySession, RemoteSession
+from .py_session import PySession
 
-from .helpers.git import git, Git
-from .helpers import yaml_ as yaml
 from .servers.http import HttpServer
-from .utilities import update
 from . import host_
 
 

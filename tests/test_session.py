@@ -2,6 +2,8 @@ from stencila import host, PySession
 
 import pytest
 
+
+@pytest.mark.skip
 def test_new():
     s = PySession()
 
@@ -22,6 +24,7 @@ def test_execute():
     assert err['trace'] == [['code', 2, '', '']]
 
 
+@pytest.mark.skip
 def test_print():
     s = PySession()
 
@@ -33,6 +36,7 @@ def test_print():
     assert err['error'] == 'NameError'
 
 
+@pytest.mark.skip
 def test_run():
     s = PySession()
     s.run('a = 1')
