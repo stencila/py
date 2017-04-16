@@ -1,7 +1,7 @@
 Context
 *******
 
-.. autoclass:: stencila.Context
+.. autoclass:: stencila.PythonContext
     :members:
     :undoc-members:
     :member-order: bysource

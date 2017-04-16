@@ -11,7 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   context
+   python_context
    value
 
 Indices and tables
