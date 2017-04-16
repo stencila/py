@@ -1,4 +1,4 @@
-Context
+PythonContext
 *******
 
 .. autoclass:: stencila.PythonContext
