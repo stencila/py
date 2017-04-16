@@ -2,7 +2,7 @@ from six import exec_
 import sys
 import traceback
 
-from value import pack
+from .value import pack
 
 undefined = object()
 
