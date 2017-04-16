@@ -1,6 +1,6 @@
 import re
 
-from stencila import host, PySession
+from stencila.host import host
 from stencila.host_http_server import HostHttpServer
 
 from werkzeug.wrappers import Request, Response

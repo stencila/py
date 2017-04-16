@@ -13,10 +13,8 @@ import tempfile
 import uuid
 
 from .version import __version__
-from .py_session import PySession
-
+from .python_context import PythonContext
 from .host_http_server import HostHttpServer
-from . import host_
 
 
 class HostConfig(dict):
@@ -66,9 +64,6 @@ class Host(object):
 
 
         """
-        if not host_.host:
-            host_.host = self
-
         self._id = str(uuid.uuid1())
 
         self._home = os.path.join(os.path.expanduser('~'), '.stencila')
@@ -428,3 +423,5 @@ class Host(object):
                     raise RuntimeError('Unable to handle a remote component\n  type: %s' % typ)
             else:
                 raise RuntimeError('Error\n  message: %s' % response.text)
+
+host = Host()
