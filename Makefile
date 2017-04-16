@@ -1,7 +1,7 @@
 all: setup build
 
 setup:
-	pip install --user setuptools wheel tox twine sphinx sphinx-autobuild
+	pip install --user setuptools wheel tox twine sphinx sphinx-autobuild sphinx_rtd_theme
 
 run:
 	python -m stencila
