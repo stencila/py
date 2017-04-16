@@ -1,7 +1,7 @@
 Packing
 *********
 
-.. automodule:: stencila.packing
+.. automodule:: stencila.value
     :members:
     :undoc-members:
     :member-order: bysource
