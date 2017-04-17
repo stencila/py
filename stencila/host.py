@@ -84,7 +84,7 @@ class Host(object):
                 'package': 'py',
                 'version': __version__
             },
-            'urls': [server.url for server in self._servers.values()],
+            'urls': self.urls,
             'types': list(TYPES.keys()),
             'instances': list(self._instances.keys())
         }
@@ -162,6 +162,7 @@ class Host(object):
             server = HostHttpServer(self)
             self._servers['http'] = server
             server.start()
+            print 'Host is served at: %s' % ', '.join(self.urls)
         return self
 
     def stop(self):
@@ -179,6 +180,10 @@ class Host(object):
     @property
     def servers(self):
         return self._servers.keys()
+
+    @property
+    def urls(self):
+        return [server.url for server in self._servers.values()]
 
     def view(self):
         """

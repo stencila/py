@@ -12,8 +12,6 @@ import mimetypes
 from werkzeug.wrappers import Request, Response
 from werkzeug.serving import ThreadedWSGIServer
 
-from .version import __version__
-
 
 class HostHttpServer(object):
 
@@ -91,34 +89,14 @@ class HostHttpServer(object):
         method = method_args[0]
         args = method_args[1:]
 
-        def respond():
-            if method in (self.web,):
-                return method(request, *args)
-            else:
-                # TODO Restrict if not listening to localhost and/or
-                # request is not from localhost
-                restricted = False
-                if restricted:
-                    token_provided = request.args.get('token')
-                    if not token_provided:
-                        token_provided = request.cookies.get('token')
-                    if token_provided != self._host.token:
-                        return self.web(request, 'login.html')
-                try:
-                    response = method(request, *args)
-                except Exception:
-                    stream = StringIO() if six.PY3 else BytesIO()
-                    traceback.print_exc(file=stream)
-                    response = Response(stream.getvalue(), status=500)
+        try:
+            response = method(request, *args)
+        except Exception:
+            stream = StringIO() if six.PY3 else BytesIO()
+            traceback.print_exc(file=stream)
+            response = Response(stream.getvalue(), status=500)
 
-                if restricted:
-                    response.set_cookie('token', self._host.token)
-
-                response.headers['Server'] = 'stencila-py-' + __version__
-
-                return response
-
-        return respond()(environ, start_response)
+        return response(environ, start_response)
 
     def route(self, verb, path):
         """
