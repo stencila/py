@@ -72,8 +72,10 @@ def pack(value):
                 values = [bool(row) for row in values]
             elif col.dtype in (numpy.int8, numpy.int16, numpy.int32, numpy.int64):
                 column_type = 'integer'
+                values = [int(row) for row in values]
             elif col.dtype in (numpy.float16, numpy.float32, numpy.float64):
                 column_type = 'float'
+                values = [float(row) for row in values]
             elif col.dtype in (numpy.str_, numpy.unicode_,):
                 column_type = 'string'
             elif col.dtype == numpy.object:
@@ -130,7 +132,7 @@ def unpack(pkg):
         if format == 'json':
             table = json.loads(content, object_pairs_hook=OrderedDict)
             df = pandas.DataFrame()
-            for name, column in table['data'].iteritems():
+            for name, column in table['data'].items():
                 df[name] = column['values']
             return df
         elif format in ('csv', 'tsv'):
