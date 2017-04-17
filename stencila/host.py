@@ -83,9 +83,9 @@ class Host(object):
                 'package': 'py',
                 'version': __version__
             },
-            'urls': [server.url() for server in self._servers.values()],
-            'types': TYPES.keys(),
-            'instances': self._instances.keys()
+            'urls': [server.url for server in self._servers.values()],
+            'types': list(TYPES.keys()),
+            'instances': list(self._instances.keys())
         }
 
     def post(self, type):
@@ -104,79 +104,80 @@ class Host(object):
         else:
             raise Exception('Unknown type: %s' % type)
 
-    # def get(self, id):
-    #     """
-    #     Get an instance
+    def get(self, id):
+        """
+        Get an instance
 
-    #     :param  {string} id - ID of instance
-    #     :returns: - Resolves to the instance
-    #     """
-    #     let instance = self._instances[id]
-    #     if (instance) {
-    #     return instance)
-    #     } else {
-    #     reject(new Error(`Unknown instance: ${id}`))
-    #     }
+        :param id: ID of instance
+        :returns: The instance
+        """
+        instance = self._instances.get(id)
+        if instance:
+            return instance
+        else:
+            raise Exception('Unknown instance: %s' % id)
 
-    # def put(self, id, method, args):
-    #     """
-    #     Call a method of an instance
+    def put(self, id, method, kwargs={}):
+        """
+        Call a method of an instance
 
-    #     :param  {string} id - ID of instance
-    #     :param {string} method - Name of instance method
-    #     :param {array} args - An array of method arguments
-    #     :returns: Resolves to result of method call
-    #     """
-    #     args = args || []
-    #     let instance = self._instances[id]
-    #     if (instance) {
-    #     let func = instance[method]
-    #     if (func) {
-    #       return Promise.return instance[method](...args)))
-    #     } else {
-    #       reject(new Error(`Unknown method: ${method}`))
-    #     }
-    #     } else {
-    #     reject(new Error(`Unknown instance: ${id}`))
-    #     }
+        :param id: ID of instance
+        :param method: Name of instance method
+        :param kwargs: An array of method arguments
+        :returns: Result of method call
+        """
+        instance = self._instances.get(id)
+        if instance:
+            try:
+                func = getattr(instance, method)
+            except AttributeError:
+                raise Exception('Unknown method: %s' % method)
+            else:
+                return func(**kwargs)
+        else:
+            raise Exception('Unknown instance: %s' % id)
 
-    # def delete(self, id):
-    #     """
-    #     Delete an instance
-    #     :param  {string} id - ID of the instance
-    #     :returns:
-    #     """
-    #     let instance = self._instances[id]
-    #     if (instance) {
-    #     delete self._instances[id]
-    #     return )
-    #     } else {
-    #     reject(new Error(`Unknown instance: ${id}`))
-    #     }
+    def delete(self, id):
+        """
+        Delete an instance
 
-    # def start(self):
-    #     """
-    #     Start serving this host
+        :param id: ID of instance
+        """
+        if id in self._instances:
+            del self._instances[id]
+        else:
+            raise Exception('Unknown instance: %s' % id)
 
-    #     Currently, HTTP is the only server available
-    #     for hosts. We plan to implement a `HostWebsocketServer` soon.
-    #     :returns:
-    #     """
-    #     if not self._servers.http:
-    #         var server = new HostHttpServer(this)
-    #         self._servers.http = server
-    #         server.start().then(resolve)
+    def start(self):
+        """
+        Start serving this host
 
-    # def stop(self):
-    #     """
-    #     Stop serving this host
-    #     :returns:
-    #     """
-    #     type = 'http'
-    #     server = self._servers[type]
-    #     if server:
-    #         del self._servers[type]
-    #         server.stop()
+        Currently, HTTP is the only server available
+        for hosts. We plan to implement a `HostWebsocketServer` soon.
+
+        :returns: self
+        """
+        if 'http' not in self._servers:
+            server = HostHttpServer(self)
+            self._servers['http'] = server
+            server.start()
+        return self
+
+    def stop(self):
+        """
+        Stop serving this host
+
+        :returns: self
+        """
+        server = self._servers.get('http')
+        if server:
+            server.stop()
+            del self._servers['http']
+        return self
+
+    @property
+    def servers(self):
+        return self._servers.keys()
 
     def view(self):
         """
@@ -185,7 +186,7 @@ class Host(object):
         Opens the default browser at the URL of this host
         """
         self.start()
-        url = self._servers['http'].url()
+        url = self._servers['http'].url
         if platform.system() == 'Linux':
             subprocess.call('2>/dev/null 1>&2 xdg-open "%s"' % url, shell=True)
         else:

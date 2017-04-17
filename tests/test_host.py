@@ -1,4 +1,6 @@
 from stencila.host import Host
+from stencila.python_context import PythonContext
+from stencila.value import pack
 from stencila.version import __version__
 
 import pytest
@@ -18,6 +20,7 @@ def test_host_options():
     assert manifest['stencila']['version'] == __version__
     assert manifest['types'][0] == 'PythonContext'
     assert len(manifest['instances']) == 0
+    assert len(manifest['types']) > 0
 
 
 def test_host_post():
@@ -32,40 +35,50 @@ def test_host_post():
     exc.match('Unknown type: fooType')
 
 
-# def test_host_get():
-#     h = Host()
+def test_host_get():
+    h = Host()
 
-#     id = h.post('RContext')
-#     assert inherits(h.get(id), 'RContext')
+    id = h.post('PythonContext')
+    assert isinstance(h.get(id), PythonContext)
 
-#     expect_error(h.get('foo'), 'Unknown instance')
-
-
-# def test_host_put():
-#     h = Host()
-
-#     id = h.post('RContext')
-#     assert h.put(id, 'runCode', list(code='6*7'))['output'], pack(42)
-#     expect_error(h.put(id, 'fooBar'), 'Unknown method')
-#     expect_error(h.put('foo', 'bar'), 'Unknown instance')
+    with pytest.raises(Exception) as exc:
+        h.get('foo')
+    exc.match('Unknown instance')
 
 
-# def test_host_delete():
-#     h = Host()
+def test_host_put():
+    h = Host()
 
-#     id = h.post('RContext')
-#     assert inherits(h.get(id), 'RContext')
-#     h.delete(id)
-#     expect_error(h.delete(id), 'Unknown instance')
+    id = h.post('PythonContext')
+    assert h.put(id, 'runCode', {'code': '6*7'})['output'], pack(42)
+
+    with pytest.raises(Exception) as exc:
+        h.put(id, 'fooBar')
+    exc.match('Unknown method')
+
+    with pytest.raises(Exception) as exc:
+        h.put('foo', 'bar')
+    exc.match('Unknown instance')
 
 
-# def test_host_start_stop():
-#     h = Host()
+def test_host_delete():
+    h = Host()
 
-#     h.start()
-#     assert h.servers, 'http'
-#     assert length(h.servers), 1
-#     assert length(h.options()['urls']), 1
-#     h.stop()
-#     assert length(h.servers), 0
-#     assert length(h.options()['urls']), 0
+    id = h.post('PythonContext')
+    assert isinstance(h.get(id), PythonContext)
+    h.delete(id)
+    with pytest.raises(Exception) as exc:
+        h.delete(id)
+    exc.match('Unknown instance')
+
+
+def test_host_start_stop():
+    h = Host()
+
+    h.start()
+    assert h.servers, 'http'
+    assert len(h.servers) == 1
+    assert len(h.options()['urls']) == 1
+    h.stop()
+    assert len(h.servers) == 0
+    assert len(h.options()['urls']) == 0

@@ -24,54 +24,49 @@ class HostHttpServer(object):
         self._server = None
 
     @property
-    def origin(self):
+    def url(self):
         """
-        Get the origin URL for this server (scheme + address + port)
+        Get the URL for this server
         """
-        return 'http://%s:%s' % (self._address, self._port)
+        return 'http://%s:%s' % (self._address, self._port) if self._server else None
 
-    @property
-    def status(self):
-        return 'on' if self._server else 'off'
+    def start(self, real=True):
+        # Setup a logger for Werkzeug (which prevents it from printing to stdout)
+        logger = logging.getLogger('werkzeug')
+        handler = logging.FileHandler(os.path.join(os.path.expanduser('~'), '.stencila', 'py-host-http-server.log'))
+        handler.setLevel(logging.WARNING)
+        formatter = logging.Formatter('%(asctime)s|%(levelname)s|%(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-    def serve(self, on=True, real=True):
-        if on:
-            # Setup a logger for werkzeug (which prevents it from printing to stdout)
-            logs = self._instance.logs
-            logger = logging.getLogger('werkzeug')
-            handler = logging.FileHandler(os.path.join(logs, 'py-http-server.log'))
-            handler.setLevel(logging.WARNING)
-            formatter = logging.Formatter('%(asctime)s|%(levelname)s|%(message)s')
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
+        # This shouldn't be necessary but if you don't do it, occaisionally
+        # the statup message goes to stdout
+        import werkzeug
+        werkzeug._internal._logger = logger
 
-            # This shouldn't be necessary but if you don't do it, occaisionally
-            # the statup message goes to stdout
-            import werkzeug
-            werkzeug._internal._logger = logger
-
-            # Find an available port and serve on it
-            if real:
-                while self._port < 65535:
-                    try:
-                        self._server = ThreadedWSGIServer(
-                            self._address, self._port, self
-                        )
-                    except socketserver.socket.error as exc:
-                        if exc.args[0] == 98:
-                            self._port += 10
-                        else:
-                            raise
+        # Find an available port and serve on it
+        if real:
+            while self._port < 65535:
+                try:
+                    self._server = ThreadedWSGIServer(
+                        self._address, self._port, self
+                    )
+                except socketserver.socket.error as exc:
+                    if exc.args[0] == 98:
+                        self._port += 10
                     else:
-                        thread = threading.Thread(target=self._server.serve_forever)
-                        thread.daemon = True
-                        thread.start()
-                        break
-        else:
-            if real:
-                self._server.shutdown()
-                self._server = None
+                        raise
+                else:
+                    thread = threading.Thread(target=self._server.serve_forever)
+                    thread.daemon = True
+                    thread.start()
+                    break
+        return self
 
+    def stop(self, real=True):
+        if real:
+            self._server.shutdown()
+            self._server = None
         return self
 
     def __call__(self, environ, start_response):
