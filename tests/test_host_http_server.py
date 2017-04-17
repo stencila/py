@@ -16,25 +16,28 @@ def request(**kwargs):
 
 def test_start_stop():
     s = HostHttpServer(host)
-    c = Client(s, Response)
 
     s.start()
     assert re.match('^http://127.0.0.1', s.url)
 
-    #r = c.get('/')
-    #assert r.status == '403 FORBIDDEN'
-    #assert not re.search('components', r.data.decode('utf-8')), 'is not authenticated'
-
-    #r = c.get('/?token='+host.token)
-    #assert r.status == '200 OK'
-    #assert re.search('components', r.data.decode('utf-8')), 'is authenticated'
-
-    #r = c.get('/!foo-bar')
-    #assert r.status == '500 INTERNAL SERVER ERROR'
-    #assert re.search('Traceback', r.data.decode('utf-8')), 'returns a traceback of error'
-
     s.stop()
     assert s.url is None
+
+
+def test_handle():
+    s = HostHttpServer(host)
+    c = Client(s, Response)
+
+    s.start()
+
+    r = c.get('/')
+    assert r.status == '200 OK'
+
+    r = c.get('/!foo-bar')
+    assert r.status == '500 INTERNAL SERVER ERROR'
+    assert re.search('Traceback', r.data.decode('utf-8')), 'returns a traceback of error'
+
+    s.stop()
 
 
 def test_route():
@@ -67,20 +70,20 @@ def test_home():
     assert r.status == '200 OK'
     assert r.headers['Content-Type'] == 'text/html; charset=utf-8'
 
-@pytest.mark.skip
+
 def test_static():
     s = HostHttpServer(host)
 
     r = s.static(request(), 'logo-name-beta.svg')
     assert r.status == '200 OK'
     assert r.headers['content-type'] == 'image/svg+xml'
-    assert r.data == '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+    assert r.data.decode()[:54] == '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
 
     r = s.static(request(), 'foo.bar')
-    assert r.status == '404'
+    assert r.status == '404 NOT FOUND'
 
     r = s.static(request(), '../DESCRIPTION')
-    assert r.status == '403'
+    assert r.status == '403 FORBIDDEN'
 
 
 def test_post():
@@ -109,3 +112,11 @@ def test_put():
     assert r2.status == '200 OK'
     assert r2.headers['content-type'] == 'application/json'
     assert json.loads(r2.data.decode())['output']['content'] == '42'
+
+
+def test_delete():
+    s = HostHttpServer(host)
+
+    r1 = s.post(request(), 'PythonContext')
+    r2 = s.delete(request(), json.loads(r1.data.decode()))
+    assert r2.status == '200 OK'

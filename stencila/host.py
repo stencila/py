@@ -14,38 +14,6 @@ TYPES = {
 }
 
 
-class HostConfig(dict):
-
-    def __init__(self, instance):
-        # Defaults
-        self['startup'] = {
-            'serve': False,
-            'discover': False
-        }
-
-        # User config file overrides
-        user = os.path.join(os.path.expanduser('~'), '.stencila', '.config.yaml')
-        if os.path.exists(user):
-            update(self, yaml.read(user))
-
-        # Local config file overrides
-        local = os.path.join('.', '.config.yaml')
-        if os.path.exists(local):
-            update(self, yaml.read(local))
-
-        # Environment overrides
-        env = os.environ
-        if env.get('STENCILA_STARTUP_SERVE'):
-            self['startup']['serve'] = env.get('STENCILA_STARTUP_SERVE') in ('true', '1')
-
-        # Command line argument overrides
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--startup-serve', default=None)
-        args, unknown = parser.parse_known_args()
-        if args.startup_serve:
-            self['startup']['serve'] = args.startup_serve in ('true', '1')
-
-
 class Host(object):
     """
     A `Host` allows you to create, get, run methods of, and delete instances of various types.
@@ -162,7 +130,7 @@ class Host(object):
             server = HostHttpServer(self)
             self._servers['http'] = server
             server.start()
-            print 'Host is served at: %s' % ', '.join(self.urls)
+            print('Host is served at: %s' % ', '.join(self.urls))
         return self
 
     def stop(self):
@@ -185,7 +153,7 @@ class Host(object):
     def urls(self):
         return [server.url for server in self._servers.values()]
 
-    def view(self):
+    def view(self):  # pragma: no cover
         """
         View this host in the browser
 

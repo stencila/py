@@ -55,7 +55,7 @@ class HostHttpServer(object):
                     self._server = ThreadedWSGIServer(
                         self._address, self._port, self
                     )
-                except socketserver.socket.error as exc:
+                except socketserver.socket.error as exc: # pragma: no cover
                     if exc.args[0] == 98:
                         self._port += 10
                     else:
@@ -140,14 +140,17 @@ class HostHttpServer(object):
             return self.static(request, 'index.html')
 
     def static(self, request, path):
-        """
-        http://stackoverflow.com/questions/6803505/does-my-code-prevent-directory-traversal
-        """
-        path = os.path.join(os.path.dirname(__file__), 'static', path)
-        return Response(
-            open(path).read(),
-            mimetype=mimetypes.guess_type(path)[0]
-        )
+        static_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
+        requested_path = os.path.abspath(os.path.join(static_path, path))
+        if os.path.commonprefix([static_path, requested_path]) != static_path:
+            return Response(status=403)
+        elif not os.path.exists(requested_path):
+            return Response(status=404)
+        else:
+            return Response(
+                open(requested_path).read(),
+                mimetype=mimetypes.guess_type(path)[0]
+            )
 
     def post(self, request, type):
         return Response(
