@@ -80,9 +80,21 @@ def test_pack_works_for_lists():
 
 
 def test_pack_works_for_a_data_frame():
-    check(pandas.DataFrame(), 'table', 'csv', '\n')
-    check(pandas.DataFrame({'a': [1, 2, 3]}), 'table', 'csv', 'a\n1\n2\n3\n')
-    check(pandas.DataFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']}), 'table', 'csv', 'a,b\n1,x\n2,y\n3,z\n')
+    check(
+        pandas.DataFrame(),
+        'table', 'json',
+        '{"type": "table", "data": {}}'
+    )
+    check(
+        pandas.DataFrame({'a': [1, 2, 3]}),
+        'table', 'json',
+        '{"type": "table", "data": {"a": {"type": "integer", "values": [1, 2, 3]}}}'
+    )
+    check(
+        pandas.DataFrame({'a': [True, False, True], 'b': ['xx', 'yy', 'zz']}),
+        'table', 'json',
+        '{"type": "table", "data": {"a": {"type": "boolean", "values": [true, false, true]}, "b": {"type": "string", "values": ["xx", "yy", "zz"]}}}'
+    )
 
 
 def test_unpack_can_take_a_list_or_a_JSON_string():
@@ -135,9 +147,18 @@ def test_unpack_works_for_arrays():
 
 
 def test_unpack_works_for_tabular_data():
-    result = pandas.DataFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']}).to_csv()
-    assert unpack({'type': 'table', 'format': 'csv', 'content': 'a,b\n1,x\n2,y\n3,z'}).to_csv() == result
-    assert unpack({'type': 'table', 'format': 'tsv', 'content': 'a\tb\n1\tx\n2\ty\n3\tz'}).to_csv() == result
+    data = pandas.DataFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})
+
+    assert unpack({'type': 'table', 'format': 'json', 'content': '''
+    {
+        "type":"table",
+        "data": {
+            "a": {"type": "integer", "values": [1, 2, 3]},
+            "b": {"type": "string", "values": ["x", "y", "z"]}
+        }
+    }'''}).to_csv() == data.to_csv()
+    assert unpack({'type': 'table', 'format': 'csv', 'content': 'a,b\n1,x\n2,y\n3,z'}).to_csv() == data.to_csv()
+    assert unpack({'type': 'table', 'format': 'tsv', 'content': 'a\tb\n1\tx\n2\ty\n3\tz'}).to_csv() == data.to_csv()
 
     with pytest.raises(Exception):
         unpack({'type': 'table', 'format': 'foo', 'content': 'bar'})

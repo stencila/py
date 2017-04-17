@@ -1,6 +1,8 @@
 import json
 from io import BytesIO
+from collections import OrderedDict
 
+import numpy
 import pandas
 
 
@@ -8,7 +10,7 @@ def type(value):
     """
     Get the type code for a value
 
-    :param value: A Python Value
+    :param value: A Python value
     :returns: Type code for value
     """
     type_ = __builtins__['type'](value).__name__
@@ -39,10 +41,10 @@ def type(value):
 
 def pack(value):
     """
-    Pack an object into a data package
+    Pack an object into a value package
 
-    :param thing: The Python object
-    :returns: A data package
+    :param value: A Python value
+    :returns: A value package
     """
     type_ = type(value)
     format = 'text'
@@ -59,8 +61,35 @@ def pack(value):
         format = 'json'
         content = json.dumps(value, separators=(',', ':'))
     elif type_ == 'table':
-        format = 'csv'
-        content = value.to_csv(index=False)
+        format = 'json'
+        columns = OrderedDict()
+        for column in value.columns:
+            col = value[column]
+            # See the list of numpy data types at https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html#arrays-scalars-built-in
+            values = list(col)
+            if col.dtype in (numpy.bool_, numpy.bool8):
+                column_type = 'boolean'
+                values = [bool(row) for row in values]
+            elif col.dtype in (numpy.int8, numpy.int16, numpy.int32, numpy.int64):
+                column_type = 'integer'
+                values = [int(row) for row in values]
+            elif col.dtype in (numpy.float16, numpy.float32, numpy.float64):
+                column_type = 'float'
+                values = [float(row) for row in values]
+            elif col.dtype in (numpy.str_, numpy.unicode_,):
+                column_type = 'string'
+            elif col.dtype == numpy.object:
+                # Get the type from the type of the first value
+                column_type = {
+                    str: 'string'
+                }.get(__builtins__['type'](values[0]))
+            else:
+                column_type = col.dtype.name
+            columns[column] = OrderedDict([
+                ('type', column_type),
+                ('values', values)
+            ])
+        content = json.dumps(OrderedDict([('type', 'table'), ('data', columns)]))
     else:
         raise RuntimeError('Unable to pack object\n  type: ' + type_)
 
@@ -69,10 +98,10 @@ def pack(value):
 
 def unpack(pkg):
     """
-    Unpack a data package into an object
+    Unpack a value package into a Python value
 
-    :param pkg: The data package
-    :returns: A Python object
+    :param pkg: The value package
+    :returns: A Python value
     """
     if isinstance(pkg, str):
         pkg = json.loads(pkg)
@@ -97,12 +126,16 @@ def unpack(pkg):
         return float(content)
     elif type_ == 'string':
         return content
-    elif type_ == 'object':
-        return json.loads(content)
-    elif type_ == 'array':
+    elif type_ == 'object' or type_ == 'array':
         return json.loads(content)
     elif type_ == 'table':
-        if format in ('csv', 'tsv'):
+        if format == 'json':
+            table = json.loads(content, object_pairs_hook=OrderedDict)
+            df = pandas.DataFrame()
+            for name, column in table['data'].items():
+                df[name] = column['values']
+            return df
+        elif format in ('csv', 'tsv'):
             sep = ',' if format == 'csv' else '\t'
             return pandas.read_csv(BytesIO(content.encode()), sep=sep)
         else:
