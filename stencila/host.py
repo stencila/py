@@ -65,6 +65,7 @@ class Host(object):
     """
 
     def __init__(self):
+        self._home = os.path.join(os.path.expanduser('~'), '.stencila')
         self._servers = {}
         self._instances = {}
 

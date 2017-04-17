@@ -20,6 +20,8 @@ setup(
         'stencila'
     ],
 
+    include_package_data=True,
+
     install_requires=[
         'pandas',
         'six',
