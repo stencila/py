@@ -78,7 +78,7 @@ def pack(value):
                 values = [float(row) for row in values]
             elif col.dtype in (numpy.str_, numpy.unicode_,):
                 column_type = 'string'
-            elif col.dtype == numpy.object:
+            elif col.dtype == numpy.object and len(values) > 0:
                 # Get the type from the type of the first value
                 column_type = {
                     str: 'string'

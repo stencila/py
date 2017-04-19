@@ -10,7 +10,7 @@ import traceback
 import mimetypes
 
 from werkzeug.wrappers import Request, Response
-from werkzeug.serving import ThreadedWSGIServer
+from werkzeug.serving import BaseWSGIServer
 
 
 class HostHttpServer(object):
@@ -52,7 +52,9 @@ class HostHttpServer(object):
         if real:
             while self._port < 65535:
                 try:
-                    self._server = ThreadedWSGIServer(
+                    # Do not use a threaded server because (amongst possible other issues)
+                    # a SQLte connection can only be used from within the same thread
+                    self._server = BaseWSGIServer(
                         self._address, self._port, self
                     )
                 except socketserver.socket.error as exc: # pragma: no cover
@@ -165,14 +167,14 @@ class HostHttpServer(object):
             )
 
     def post(self, request, type):
-        args = json.loads(request.data.decode()) if request.data else {}
-        if 'name' in args:
-            name = args.get('name')
-            del args['name']
+        kwargs = json.loads(request.data.decode()) if request.data else {}
+        if 'name' in kwargs:
+            name = kwargs.get('name')
+            del kwargs['name']
         else:
             name = None
         return Response(
-            to_json(self._host.post(type, name, args)),
+            to_json(self._host.post(type, name, kwargs)),
             mimetype='application/json'
         )
 
@@ -183,9 +185,9 @@ class HostHttpServer(object):
         )
 
     def put(self, request, id, method):
-        args = json.loads(request.data.decode()) if request.data else []
+        kwargs = json.loads(request.data.decode()) if request.data else {}
         return Response(
-            to_json(self._host.put(id, method, args)),
+            to_json(self._host.put(id, method, kwargs)),
             mimetype='application/json'
         )
 

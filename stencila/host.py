@@ -6,10 +6,12 @@ import subprocess
 
 from .version import __version__
 from .python_context import PythonContext
+from .sqlite_context import SqliteContext
 from .host_http_server import HostHttpServer
 
 TYPES = {
-    'PythonContext': PythonContext
+    'PythonContext': PythonContext,
+    'SqliteContext': SqliteContext
 }
 
 
@@ -54,7 +56,8 @@ class Host(object):
             'urls': self.urls,
             'schemes': {
                 'new': {
-                    'PythonContext': PythonContext.spec
+                    'PythonContext': PythonContext.spec,
+                    'SqliteContext': SqliteContext.spec
                 }
             },
             'instances': list(self._instances.keys())
@@ -99,7 +102,7 @@ class Host(object):
 
         :param id: ID of instance
         :param method: Name of instance method
-        :param kwargs: An array of method arguments
+        :param kwargs: A dictionary of method arguments
         :returns: Result of method call
         """
         instance = self._instances.get(id)
