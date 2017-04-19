@@ -21,7 +21,7 @@ class SqliteContext(object):
                 output = pandas.read_sql_query(code, self._connection)
             else:
                 self._connection.execute(code)
-        except Exception, exc:
+        except Exception as exc:
             errors = [{
                 'line': 0,
                 'column': 0,
@@ -35,7 +35,7 @@ class SqliteContext(object):
 
     def callCode(self, code, inputs={}):
         variables = {}
-        for name, package in inputs.iteritems():
+        for name, package in inputs.items():
             value = unpack(package)
             if isinstance(value, pandas.DataFrame):
                 value.to_sql(name, self._connection, flavor='sqlite', if_exists='replace', index=False)
