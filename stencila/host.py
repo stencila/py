@@ -1,4 +1,3 @@
-import argparse
 import os
 import platform
 import random
@@ -53,23 +52,31 @@ class Host(object):
                 'version': __version__
             },
             'urls': self.urls,
-            'types': list(TYPES.keys()),
+            'schemes': {
+                'new': {
+                    'PythonContext': PythonContext.spec
+                }
+            },
             'instances': list(self._instances.keys())
         }
 
-    def post(self, type):
+    def post(self, type, name=None, options={}):
         """
         Create a new instance of a type
 
         :param type: Type of instance
-        :returns: ID string of newly created instance
+        :param name: Name of new instance
+        :param options: Additional arguments to pass to constructor
+        :returns: Address of newly created instance
         """
         Class = TYPES.get(type)
         if Class:
-            instance = Class()
-            id = ''.join(random.choice(string.ascii_lowercase + string.digits) for char in range(12))
-            self._instances[id] = instance
-            return id
+            instance = Class(**options)
+            if not name:
+                name = ''.join(random.choice(string.ascii_lowercase + string.digits) for char in range(12))
+            address = 'name://' + name
+            self._instances[address] = instance
+            return address
         else:
             raise Exception('Unknown type: %s' % type)
 

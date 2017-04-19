@@ -63,6 +63,12 @@ class PythonContext(object):
             'message': exc_type.__name__ + ': ' + traceback._some_str(exc_value)
         }]
 
+PythonContext.spec = {
+    'name': 'PythonContext',
+    'base': 'Context',
+    'aliases': ['py', 'python']
+}
+
 
 class PythonContextScope(dict):
 

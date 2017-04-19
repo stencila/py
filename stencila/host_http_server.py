@@ -96,6 +96,10 @@ class HostHttpServer(object):
             traceback.print_exc(file=stream)
             response = Response(stream.getvalue(), status=500)
 
+        # CORS access header added to all requests
+        # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
+        response.headers['Access-Control-Allow-Origin'] = '*'
+
         return response(environ, start_response)
 
     def route(self, verb, path):
@@ -127,11 +131,19 @@ class HostHttpServer(object):
 
         return None
 
-    def options(self):
-        return Response()
+    def options(self, request):
+        return Response(
+            # CORS preflight headers. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
+            headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Max-Age': '1728000'
+            }
+        )
 
     def home(self, request):
-        if 'application/json' in request.headers.get('accept',''):
+        if 'application/json' in request.headers.get('accept', ''):
             return Response(
                 to_json(self._host.options()),
                 mimetype='application/json'
@@ -153,8 +165,14 @@ class HostHttpServer(object):
             )
 
     def post(self, request, type):
+        args = json.loads(request.data.decode()) if request.data else {}
+        if 'name' in args:
+            name = args.get('name')
+            del args['name']
+        else:
+            name = None
         return Response(
-            to_json(self._host.post(type)),
+            to_json(self._host.post(type, name, args)),
             mimetype='application/json'
         )
 
@@ -165,11 +183,7 @@ class HostHttpServer(object):
         )
 
     def put(self, request, id, method):
-        if request.data:
-            args = json.loads(request.data.decode())
-        else:
-            args = []
-
+        args = json.loads(request.data.decode()) if request.data else []
         return Response(
             to_json(self._host.put(id, method, args)),
             mimetype='application/json'
