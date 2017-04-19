@@ -10,13 +10,13 @@ undefined = object()
 class PythonContext(object):
 
     def __init__(self):
-        self.global_scope = PythonContextScope()
+        self._global_scope = PythonContextScope()
 
     def runCode(self, code):
         # Execute the code
         errors = None
         try:
-            exec_(code, self.global_scope)
+            exec_(code, self._global_scope)
         except:
             errors = self._errors()
 
@@ -27,7 +27,7 @@ class PythonContext(object):
             # but alternative approaches would appear to require some code parsing
             last = code.split('\n')[-1]
             try:
-                output = eval(last, self.global_scope)
+                output = eval(last, self._global_scope)
             except:
                 output = undefined
 
@@ -62,6 +62,12 @@ class PythonContext(object):
             'column': 0,
             'message': exc_type.__name__ + ': ' + traceback._some_str(exc_value)
         }]
+
+PythonContext.spec = {
+    'name': 'PythonContext',
+    'base': 'Context',
+    'aliases': ['py', 'python']
+}
 
 
 class PythonContextScope(dict):
