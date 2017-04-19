@@ -48,3 +48,9 @@ class SqliteContext(object):
         code_ = string.Template(code).substitute(variables)
 
         return self.runCode(code_)
+
+SqliteContext.spec = {
+    'name': 'SqliteContext',
+    'base': 'Context',
+    'aliases': ['sqlite']
+}
