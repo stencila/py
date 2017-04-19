@@ -18,9 +18,8 @@ def test_host_options():
     manifest = h.options()
     assert manifest['stencila']['package'] == 'py'
     assert manifest['stencila']['version'] == __version__
-    assert manifest['types'][0] == 'PythonContext'
+    assert manifest['schemes']['new']['PythonContext'] == PythonContext.spec
     assert len(manifest['instances']) == 0
-    assert len(manifest['types']) > 0
 
 
 def test_host_post():
