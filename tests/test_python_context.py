@@ -1,6 +1,8 @@
 from stencila.python_context import PythonContext
 from stencila.value import pack
 
+import matplotlib.pyplot as plt
+
 
 def test_new():
     s = PythonContext()
@@ -24,6 +26,11 @@ def test_runCode():
     err = s.runCode('y = 24\nfoo')['errors'][0]
     assert err['line'] == 2
     assert err['message'] == "NameError: name 'foo' is not defined"
+
+    output = s.runCode('plt.plot(range(5))')['output']
+    assert output['type'] == 'image'
+    assert output['format'] == 'png'
+    assert output['content'][:10] == 'iVBORw0KGg'
 
 
 def test_callCode():

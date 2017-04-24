@@ -1,7 +1,10 @@
+import base64
 import json
 from io import BytesIO
+from six import StringIO
 from collections import OrderedDict
 
+import matplotlib
 import numpy
 import pandas
 
@@ -25,6 +28,14 @@ def type(value):
         return 'float'
     elif type_ == 'str':
         return 'string'
+    elif (
+        isinstance(value, matplotlib.figure.Figure) or
+        isinstance(value, matplotlib.artist.Artist) or
+        (type_ == 'list' and len(value) == 1 and isinstance(value[0], matplotlib.artist.Artist))
+    ):
+        # Use the special 'matplotlib' type to identify plot values that need
+        # to be converted to the standard 'image' type during `pack()`
+        return 'matplotlib'
     elif type_ in ('tuple', 'list'):
         return 'array'
     elif type_ == 'dict':
@@ -65,7 +76,8 @@ def pack(value):
         columns = OrderedDict()
         for column in value.columns:
             col = value[column]
-            # See the list of numpy data types at https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html#arrays-scalars-built-in
+            # See the list of numpy data types at
+            # https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html#arrays-scalars-built-in
             values = list(col)
             if col.dtype in (numpy.bool_, numpy.bool8):
                 column_type = 'boolean'
@@ -90,6 +102,12 @@ def pack(value):
                 ('values', values)
             ])
         content = json.dumps(OrderedDict([('type', 'table'), ('data', columns)]))
+    elif type_ == 'matplotlib':
+        image = StringIO()
+        matplotlib.pyplot.savefig(image, format='png')
+        type_ = 'image'
+        format = 'png'
+        content = base64.encodestring(image.getvalue())
     else:
         raise RuntimeError('Unable to pack object\n  type: ' + type_)
 

@@ -2,6 +2,8 @@ import math
 
 import pytest
 import pandas
+import matplotlib
+import matplotlib.pyplot as plt
 
 from stencila.value import type, pack, unpack
 
@@ -28,6 +30,8 @@ def test_type():
 
     assert type(dict()) == 'object'
     assert type(dict(a=1, b=2)) == 'object'
+
+    assert type(plt.plot(range(5))) == 'matplotlib'
 
     assert type(dict(type='html', content='<img>')) == 'html'
     assert type(dict(type='png', content='')) == 'png'
@@ -80,6 +84,24 @@ def test_pack_works_for_lists():
 
 
 def test_pack_works_for_a_data_frame():
+    check(
+        pandas.DataFrame(),
+        'table', 'json',
+        '{"type": "table", "data": {}}'
+    )
+    check(
+        pandas.DataFrame({'a': [1, 2, 3]}),
+        'table', 'json',
+        '{"type": "table", "data": {"a": {"type": "integer", "values": [1, 2, 3]}}}'
+    )
+    check(
+        pandas.DataFrame({'a': [True, False, True], 'b': ['xx', 'yy', 'zz']}),
+        'table', 'json',
+        '{"type": "table", "data": {"a": {"type": "boolean", "values": [true, false, true]}, "b": {"type": "string", "values": ["xx", "yy", "zz"]}}}'
+    )
+
+
+def test_pack_works_for_plots():
     check(
         pandas.DataFrame(),
         'table', 'json',

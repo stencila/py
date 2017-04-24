@@ -5,13 +5,28 @@ import traceback
 
 from .value import pack, unpack
 
+import numpy
+import pandas
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+
 undefined = object()
 
 
 class PythonContext(object):
 
     def __init__(self):
-        self._global_scope = PythonContextScope()
+        self._global_scope = {
+            'numpy': numpy,
+            'np': numpy,
+            'matplotlib': matplotlib,
+            'plt': plt,
+            'pandas': pandas,
+            'pd': pandas
+        }
 
     def runCode(self, code):
         """
@@ -25,6 +40,14 @@ class PythonContext(object):
         except:
             errors = self._errors()
 
+        # Check for 'artifacts'
+        artifact = None
+        # matplotlib figure
+        figure = plt.gcf()
+        if len(figure.get_axes()):
+            artifact = figure
+            plt.clf()
+
         output = undefined
         if not errors:
             # Evaluate the last line and if no error then make the value output
@@ -35,6 +58,11 @@ class PythonContext(object):
                 output = eval(last, self._global_scope)
             except:
                 output = undefined
+
+            # If output is undefined and there was an artifact (e.g. a matplotlib figure)
+            # then use the artifact value as output
+            if output is undefined and artifact:
+                output = artifact
 
         return {
             'errors': errors,
@@ -50,7 +78,8 @@ class PythonContext(object):
         names = inputs.keys()
         values = [unpack(package) for package in inputs.values()]
 
-        # Create a function with names and code within a temporary module
+        # Create a function within a temporary module having
+        # input names as parameters and code as body
         if not code.strip():
             code = 'pass'
         func = 'def func(%s):\n%s\n' % (
@@ -110,18 +139,3 @@ PythonContext.spec = {
     'base': 'Context',
     'aliases': ['py', 'python']
 }
-
-
-class PythonContextScope(dict):
-
-    def __init__(self, parent=None):
-        self.parent = parent
-
-    def __getitem__(self, name):
-        try:
-            return dict.__getitem__(self, name)
-        except KeyError:
-            if self.parent:
-                return self.parent[name]
-            else:
-                raise KeyError(name)
