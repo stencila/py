@@ -40,7 +40,7 @@ def test_callCode():
     assert output is None
     error = result['errors'][0]
     assert error['line'] == 2
-    assert error['message'] == "NameError: global name 'foo' is not defined"
+    assert "name 'foo' is not defined" in error['message']
 
     result = s.callCode('a syntax error')
     output = result['output']
