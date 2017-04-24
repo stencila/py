@@ -1,7 +1,6 @@
 import base64
 import json
 from io import BytesIO
-from six import StringIO
 from collections import OrderedDict
 
 import matplotlib
@@ -103,11 +102,11 @@ def pack(value):
             ])
         content = json.dumps(OrderedDict([('type', 'table'), ('data', columns)]))
     elif type_ == 'matplotlib':
-        image = StringIO()
+        image = BytesIO()
         matplotlib.pyplot.savefig(image, format='png')
         type_ = 'image'
         format = 'png'
-        content = base64.encodestring(image.getvalue())
+        content = base64.encodestring(image.getvalue()).decode()
     else:
         raise RuntimeError('Unable to pack object\n  type: ' + type_)
 

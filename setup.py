@@ -23,8 +23,10 @@ setup(
     include_package_data=True,
 
     install_requires=[
+        'matplotlib',
+        'numpy',
         'pandas',
         'six',
-        'werkzeug',
+        'werkzeug'
     ]
 )
