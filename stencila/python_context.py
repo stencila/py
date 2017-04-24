@@ -1,8 +1,9 @@
+import imp
 from six import exec_
 import sys
 import traceback
 
-from .value import pack
+from .value import pack, unpack
 
 undefined = object()
 
@@ -13,6 +14,10 @@ class PythonContext(object):
         self._global_scope = PythonContextScope()
 
     def runCode(self, code):
+        """
+        Run Python code
+        """
+
         # Execute the code
         errors = None
         try:
@@ -36,6 +41,38 @@ class PythonContext(object):
             'output': None if output is undefined else pack(output)
         }
 
+    def callCode(self, code, inputs={}):
+        """
+        Call Python code
+        """
+
+        # Extract names and values of inputs
+        names = inputs.keys()
+        values = [unpack(package) for package in inputs.values()]
+
+        # Create a function with names and code within a temporary module
+        if not code.strip():
+            code = 'pass'
+        func = 'def func(%s):\n%s\n' % (
+            ','.join(names),
+            '\n'.join('    %s' % line for line in code.split('\n'))
+        )
+        module = imp.new_module('temp')
+
+        # Call the function
+        output = undefined
+        errors = None
+        try:
+            exec_(func, self._global_scope, module.__dict__)
+            output = module.func(*values)
+        except:
+            errors = self._errors()
+
+        return {
+            'errors': errors,
+            'output': None if output is undefined else pack(output)
+        }
+
     def _errors(self):
         exc_type, exc_value, exc_traceback = sys.exc_info()
         # Extract traceback and for compatibility with >=Py3.5 ensure converted to tuple
@@ -43,7 +80,7 @@ class PythonContext(object):
         # Remove first associated with line that executes code above
         frames = frames[1:]
         # If this is Python 2 then also need to remove the frames for the six.exec_ function
-        if frames[0][0][-7:] == '/six.py':
+        if len(frames) and frames[0][0][-7:] == '/six.py':
             frames = frames[2:]
         # Replace '<string>' with 'code' for file, and '<module>' with '' for function
         # (filename, line number, function name, text)
@@ -56,7 +93,12 @@ class PythonContext(object):
                 '' if frame[3] is None else frame[3]
             ])
         # Get line number from last entry
-        line = trace[len(trace)-1][1]
+        if len(trace):
+            line = trace[-1][1]
+        else:
+            # No trace when syntax error
+            line = 0
+
         return [{
             'line': line,
             'column': 0,
