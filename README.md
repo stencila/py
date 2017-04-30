@@ -48,6 +48,8 @@ Install dependencies                                    | `make setup` | `pip in
 Run tests                                               | `make test`  | `tox`       
 Run tests with coverage                                 | `make cover` | `tox -e cover`              
 Build                                                   | `make build` | `./setup.py bdist_wheel`
+Build documentation                                     | `make docs`  | `make -C docs html`
+Run for manual testing                                  | `make run`   | `python -m stencila`
 Clean                                                   | `make clean` | `rm -rf ...`
 
 To get started, please read our contributor [code of conduct](CONDUCT.md), then [get in touch](https://gitter.im/stencila/stencila) or checkout the [platform-wide, cross-repository kanban board](https://github.com/orgs/stencila/projects/1), or just send in a pull request!

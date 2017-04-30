@@ -2,12 +2,13 @@ from setuptools import setup
 
 setup(
     name='stencila',
-    version='0.1.0',
+    version='0.26.0',
 
     description='Stencila for Python',
     long_description='''
-        Stencila is a platform for creating, collaborating on, and publishing
-        data driven documents.
+        Stencila is the office suite for reproducible research.
+        This package lets you create execution contexts for Python, and other languages, to use in Stencila Desktop or 
+        your web browser.
     ''',
 
     author='Nokome Bentley',
