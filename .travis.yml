@@ -8,18 +8,16 @@ python:
 cache: pip
 
 install:
-  - pip install setuptools wheel tox tox-travis
-  - wget https://github.com/jgm/pandoc/releases/download/1.17.2/pandoc-1.17.2-1-amd64.deb
-  - sudo dpkg -i pandoc-1.17.2-1-amd64.deb
+  - make setup
 
 script:
-  - tox
+  - make test
+  - make docs
 
 after_success:
   - |
     if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then
-      tox -e cover;
-      sed -i "s!.tox/cover/lib/python3.6/site-packages/stencila/!!g" coverage.xml;
+      make cover
       bash <(curl -s https://codecov.io/bash);
     fi
 
