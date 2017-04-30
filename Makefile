@@ -2,11 +2,11 @@ all: setup build
 
 SETUP_PACKAGES := setuptools wheel tox twine sphinx sphinx-autobuild sphinx_rtd_theme
 
-# A local user install isgenerally recommended
+# A local user install is generally recommended
 setup:
 	pip install --user $(SETUP_PACKAGES)
 
-# A global install required for Travis
+# A global install is required for Travis
 setup-global:
 	pip install $(SETUP_PACKAGES)
 
