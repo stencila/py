@@ -7,21 +7,21 @@ from .host_http_server import HostHttpServer
 from .value import type, pack, unpack
 
 
-def start():
+def start():  # pragma: no cover
     """
     Start serving the Stencila host
     """
     host.start()
 
 
-def stop():
+def stop():  # pragma: no cover
     """
     Stop serving the Stencila host
     """
     host.stop()
 
 
-def run():
+def run():  # pragma: no cover
     """
     Start serving the Stencila host
     """

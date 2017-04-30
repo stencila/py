@@ -59,6 +59,17 @@ def test_route():
     assert s.route('DELETE', '/id') == (s.delete, 'id')
 
 
+def test_options():
+    s = HostHttpServer(host)
+
+    r = s.options(request())
+    assert r.status == '200 OK'
+    assert r.headers['Access-Control-Allow-Origin'] == '*'
+    assert r.headers['Access-Control-Allow-Methods'] == 'GET, POST, PUT, DELETE, OPTIONS'
+    assert r.headers['Access-Control-Allow-Headers'] == 'Content-Type'
+    assert r.headers['Access-Control-Max-Age'] == '1728000'
+
+
 def test_home():
     s = HostHttpServer(host)
 
