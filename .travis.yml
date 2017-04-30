@@ -11,8 +11,7 @@ install:
   - make setup-global
 
 script:
-  - make test
-  - make docs
+  - tox
 
 after_success:
   - |
