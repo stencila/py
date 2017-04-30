@@ -12,6 +12,9 @@ Contents:
    :maxdepth: 2
 
    python_context
+   sqlite_context
+   host
+   host_http_server
    value
 
 Indices and tables

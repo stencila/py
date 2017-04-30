@@ -1,7 +1,7 @@
-PythonContext
+SqliteContext
 *************
 
-.. autoclass:: stencila.PythonContext
+.. autoclass:: stencila.SqliteContext
     :members:
     :undoc-members:
     :member-order: bysource
