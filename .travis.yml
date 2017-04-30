@@ -17,9 +17,9 @@ script:
 
 after_success:
   - |
-    if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then
+    if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then
       tox -e cover;
-      sed -i "s!.tox/cover/lib/python2.7/site-packages/stencila/!!g" coverage.xml;
+      sed -i "s!.tox/cover/lib/python3.6/site-packages/stencila/!!g" coverage.xml;
       bash <(curl -s https://codecov.io/bash);
     fi
 
