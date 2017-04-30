@@ -8,7 +8,7 @@ python:
 cache: pip
 
 install:
-  - make setup-global
+  - make setup-travis
 
 script:
   - tox

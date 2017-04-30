@@ -6,9 +6,9 @@ SETUP_PACKAGES := setuptools wheel tox twine sphinx sphinx-autobuild sphinx_rtd_
 setup:
 	pip install --user $(SETUP_PACKAGES)
 
-# A global install is required for Travis
-setup-global:
-	pip install $(SETUP_PACKAGES)
+# A global install is required for Travis as is the extra package `tox-travis`
+setup-travis:
+	pip install $(SETUP_PACKAGES) tox-travis
 
 run:
 	python -m stencila
