@@ -3,6 +3,7 @@ import platform
 import random
 import string
 import subprocess
+import time
 
 from .version import __version__
 from .python_context import PythonContext
@@ -38,6 +39,16 @@ class Host(object):
         self._servers = {}
         self._instances = {}
 
+    def environ(self):
+        """
+        Get the environment of this host including the version of Node.js and versions
+        of installed packages (local and globals)
+
+        :returns: The environment as a dictionary of dictionaries
+        """
+        # TODO see https://github.com/stencila/r/blob/8575f43096b6472fcc039e513a5f82a274864241/R/host.R#L91
+        return {}
+
     def manifest(self):
         """
         Get a manifest for this host
@@ -62,6 +73,15 @@ class Host(object):
             },
             'instances': list(self._instances.keys())
         }
+
+    def install(self):
+        """
+        Installation of a host involves creating a file `node.json` inside of
+        the user's Stencila data (see `user_dir()`) directory which describes
+        the capabilities of this host.
+        """
+        # TODO see https://github.com/stencila/r/blob/8575f43096b6472fcc039e513a5f82a274864241/R/host.R#L152
+        pass
 
     def post(self, type, name=None, options={}):
         """
@@ -127,7 +147,7 @@ class Host(object):
         else:
             raise Exception('Unknown instance: %s' % id)
 
-    def start(self):
+    def start(self, address='127.0.0.1', port=2000):
         """
         Start serving this host
 
@@ -137,7 +157,7 @@ class Host(object):
         :returns: self
         """
         if 'http' not in self._servers:
-            server = HostHttpServer(self)
+            server = HostHttpServer(self, address, port)
             self._servers['http'] = server
             server.start()
             print('Host is served at: %s' % ', '.join(self.urls))
@@ -154,6 +174,19 @@ class Host(object):
             server.stop()
             del self._servers['http']
         return self
+
+    def run(self, address='127.0.0.1', port=2000):
+        """
+        Start serving this host and wait for connections
+        indefinitely
+        """
+        self.start(address, port)
+        print('Use Ctrl+C to stop')
+        while True:
+            try:
+                time.sleep(0x7FFFFFFF)
+            except KeyboardInterrupt:
+                break
 
     @property
     def servers(self):

@@ -1,5 +1,3 @@
-import time
-
 from .python_context import PythonContext
 from .sqlite_context import SqliteContext
 from .host import Host, host
@@ -7,11 +5,26 @@ from .host_http_server import HostHttpServer
 from .value import type, pack, unpack
 
 
-def start():  # pragma: no cover
+def install():  # pragma: no cover
+    """
+    Install the Stencila host
+    """
+    host.install()
+
+
+def environ():  # pragma: no cover
+    """
+    Display the Stencila host's environment
+    """
+    import json
+    print(json.dumps(host.environ()))
+
+
+def start(address='127.0.0.1', port=2000):  # pragma: no cover
     """
     Start serving the Stencila host
     """
-    host.start()
+    host.start(address, port)
 
 
 def stop():  # pragma: no cover
@@ -21,14 +34,8 @@ def stop():  # pragma: no cover
     host.stop()
 
 
-def run():  # pragma: no cover
+def run(address='127.0.0.1', port=2000):  # pragma: no cover
     """
     Start serving the Stencila host
     """
-    start()
-    print('Use Ctrl+C to stop')
-    while True:
-        try:
-            time.sleep(0x7FFFFFFF)
-        except KeyboardInterrupt:
-            break
+    host.run(address, port)
