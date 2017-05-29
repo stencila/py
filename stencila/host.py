@@ -38,7 +38,7 @@ class Host(object):
         self._servers = {}
         self._instances = {}
 
-    def options(self):
+    def manifest(self):
         """
         Get a manifest for this host
 

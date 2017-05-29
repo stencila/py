@@ -147,7 +147,7 @@ class HostHttpServer(object):
     def home(self, request):
         if 'application/json' in request.headers.get('accept', ''):
             return Response(
-                to_json(self._host.options()),
+                to_json(self._host.manifest()),
                 mimetype='application/json'
             )
         else:

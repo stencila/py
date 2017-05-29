@@ -12,10 +12,10 @@ def test_host():
     assert isinstance(h, Host)
 
 
-def test_host_options():
+def test_host_manifest():
     h = Host()
 
-    manifest = h.options()
+    manifest = h.manifest()
     assert manifest['stencila']['package'] == 'py'
     assert manifest['stencila']['version'] == __version__
     assert manifest['schemes']['new']['PythonContext'] == PythonContext.spec
@@ -77,7 +77,7 @@ def test_host_start_stop():
     h.start()
     assert h.servers, 'http'
     assert len(h.servers) == 1
-    assert len(h.options()['urls']) == 1
+    assert len(h.manifest()['urls']) == 1
     h.stop()
     assert len(h.servers) == 0
-    assert len(h.options()['urls']) == 0
+    assert len(h.manifest()['urls']) == 0
