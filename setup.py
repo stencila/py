@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='stencila',
-    version='0.26.0',
+    version='0.27-preview',
 
     description='Stencila for Python',
     long_description='''
