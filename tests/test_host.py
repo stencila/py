@@ -1,3 +1,7 @@
+import os
+import platform
+import tempfile
+
 from stencila.host import Host
 from stencila.python_context import PythonContext
 from stencila.value import pack
@@ -12,6 +16,17 @@ def test_host():
     assert isinstance(h, Host)
 
 
+def test_user_dir():
+    h = Host()
+    if platform.system().lower() == 'linux':
+        assert h.user_dir() == os.path.join(os.getenv("HOME"), '.local', 'share', 'stencila')
+
+
+def test_temp_dir():
+    h = Host()
+    assert h.temp_dir() == os.path.join(tempfile.gettempdir(), 'stencila')
+
+
 def test_host_manifest():
     h = Host()
 
@@ -19,7 +34,14 @@ def test_host_manifest():
     assert manifest['stencila']['package'] == 'py'
     assert manifest['stencila']['version'] == __version__
     assert manifest['schemes']['new']['PythonContext'] == PythonContext.spec
+
+    h.start()
+    manifest = h.manifest()
+    assert manifest['id'] == h.id
+    assert manifest['process'] == os.getpid()
     assert len(manifest['instances']) == 0
+
+    h.stop()
 
 
 def test_host_post():

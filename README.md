@@ -9,8 +9,14 @@
 
 This package isn't on PyPI yet, but you can install it this repository using using pip:
 
-```
+```sh
 pip install --user https://github.com/stencila/py/archive/master.zip
+```
+
+Then install the package so that other Stencila packages and applications can detect it:
+
+```sh
+python -c "import stencila; stencila.install()"
 ```
 
 ### Use

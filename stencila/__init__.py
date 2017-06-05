@@ -5,11 +5,11 @@ from .host_http_server import HostHttpServer
 from .value import type, pack, unpack
 
 
-def install():  # pragma: no cover
+def install(*args, **kwargs):  # pragma: no cover
     """
     Install the Stencila host
     """
-    host.install()
+    host.install(*args, **kwargs)
 
 
 def environ():  # pragma: no cover
@@ -20,22 +20,22 @@ def environ():  # pragma: no cover
     print(json.dumps(host.environ()))
 
 
-def start(address='127.0.0.1', port=2000):  # pragma: no cover
+def start(*args, **kwargs):  # pragma: no cover
     """
     Start serving the Stencila host
     """
-    host.start(address, port)
+    host.start(*args, **kwargs)
 
 
-def stop():  # pragma: no cover
+def stop(*args, **kwargs):  # pragma: no cover
     """
     Stop serving the Stencila host
     """
-    host.stop()
+    host.stop(*args, **kwargs)
 
 
-def run(address='127.0.0.1', port=2000):  # pragma: no cover
+def run(*args, **kwargs):  # pragma: no cover
     """
     Start serving the Stencila host
     """
-    host.run(address, port)
+    host.run(*args, **kwargs)
