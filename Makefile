@@ -1,6 +1,6 @@
 all: setup build
 
-SETUP_PACKAGES := setuptools wheel tox twine sphinx sphinx-autobuild sphinx_rtd_theme
+SETUP_PACKAGES := setuptools wheel tox twine sphinx sphinx-autobuild sphinx_rtd_theme pylint
 
 # A local user install is generally recommended
 setup:
@@ -16,6 +16,9 @@ run:
 build:
 	python setup.py bdist_wheel
 .PHONY: build
+
+lint:
+	pylint stencila
 
 test:
 ifeq ($(OS), win)
