@@ -18,7 +18,7 @@ def test_host():
 
 def test_user_dir():
     h = Host()
-    if platform.system().lower() == 'linux':
+    if platform.system().lower() == 'linux' and os.getenv("HOME"):
         assert h.user_dir() == os.path.join(os.getenv("HOME"), '.local', 'share', 'stencila')
 
 
