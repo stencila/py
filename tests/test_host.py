@@ -1,3 +1,4 @@
+import json
 import os
 import platform
 import tempfile
@@ -42,6 +43,16 @@ def test_host_manifest():
     assert len(manifest['instances']) == 0
 
     h.stop()
+
+
+def test_host_install():
+    h = Host()
+
+    h.install()
+    manifest = h.manifest()
+
+    with open(os.path.join(h.user_dir(), 'hosts', 'py.json')) as manifest_file:
+        assert manifest == json.load(manifest_file)
 
 
 def test_host_post():
