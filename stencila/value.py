@@ -28,9 +28,8 @@ def type(value):
     elif type_ == 'str':
         return 'string'
     elif (
-        isinstance(value, matplotlib.figure.Figure) or
-        isinstance(value, matplotlib.artist.Artist) or
-        (type_ == 'list' and len(value) == 1 and isinstance(value[0], matplotlib.artist.Artist))
+            isinstance(value, (matplotlib.figure.Figure, matplotlib.artist.Artist)) or
+            (type_ == 'list' and len(value) == 1 and isinstance(value[0], matplotlib.artist.Artist))
     ):
         # Use the special 'matplotlib' type to identify plot values that need
         # to be converted to the standard 'image' type during `pack()`
@@ -41,8 +40,7 @@ def type(value):
         type_ = value.get('type')
         if type_ and isinstance(type_, str):
             return type_
-        else:
-            return 'object'
+        return 'object'
     elif isinstance(value, pandas.DataFrame):
         return 'table'
     else:
@@ -57,7 +55,7 @@ def pack(value):
     :returns: A value package
     """
     type_ = type(value)
-    format = 'text'
+    format_ = 'text'
 
     if value is None:
         content = 'null'
@@ -68,10 +66,10 @@ def pack(value):
     elif type_ == 'string':
         content = value
     elif type_ in ('array', 'object'):
-        format = 'json'
+        format_ = 'json'
         content = json.dumps(value, separators=(',', ':'))
     elif type_ == 'table':
-        format = 'json'
+        format_ = 'json'
         columns = OrderedDict()
         for column in value.columns:
             col = value[column]
@@ -105,12 +103,12 @@ def pack(value):
         image = BytesIO()
         matplotlib.pyplot.savefig(image, format='png')
         type_ = 'image'
-        format = 'png'
+        format_ = 'png'
         content = base64.encodestring(image.getvalue()).decode()
     else:
         raise RuntimeError('Unable to pack object\n  type: ' + type_)
 
-    return {'type': type_, 'format': format, 'content': content}
+    return {'type': type_, 'format': format_, 'content': content}
 
 
 def unpack(pkg):
