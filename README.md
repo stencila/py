@@ -3,6 +3,7 @@
 [![Build status](https://travis-ci.org/stencila/py.svg?branch=master)](https://travis-ci.org/stencila/py)
 [![Code coverage](https://codecov.io/gh/stencila/py/branch/master/graph/badge.svg)](https://codecov.io/gh/stencila/py)
 [![Documentation](https://readthedocs.org/projects/stencila-for-python/badge/)](http://stencila-for-python.readthedocs.io)
+[![Community](https://img.shields.io/badge/join-community-green.svg)](https://community.stenci.la)
 [![Chat](https://badges.gitter.im/stencila/stencila.svg)](https://gitter.im/stencila/stencila)
 
 ### Install
@@ -21,22 +22,9 @@ python -c "import stencila; stencila.install()"
 
 ### Use
 
-This package lets you run Python code (and other languages) from inside Stencila Documents. First, you need to start serving the Stencila Host within this package. You can do that in your favourite Python console:
+This package lets you run Python code (and other languages) from inside Stencila Documents. When you start the [Stencila Desktop](https://github.com/stencila/desktop), the Stencila Python package will be automatically detected by the dektop app and you'll be able to execute Python code cells from within your documents.
 
-```python
-import stencila
-stencila.start()
-```
-
-Or at the system shell:
-
-```sh
-python -m stencila
-```
-
-Then, open your Stencila Document from within the [Stencila Desktop](https://github.com/stencila/desktop). The host will be automatically detected by the dektop app and you'll be able to execute Python code cells from within your documents.
-
-In addition to the a `PythonCOntext` class, this packages also provides a `SQLiteContext` for executing SQL within an SQLite database (currently only an in-memory database).
+In addition to the a `PythonContext` class, this packages also provides a `SQLiteContext` for executing SQL within an SQLite database (currently only an in-memory database).
 
 More documentation is available at http://stencila-for-python.readthedocs.io
 
