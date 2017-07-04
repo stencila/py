@@ -103,8 +103,8 @@ def pack(value):
         image = BytesIO()
         matplotlib.pyplot.savefig(image, format='png')
         type_ = 'image'
-        format_ = 'png'
-        content = base64.encodestring(image.getvalue()).decode()
+        format_ = 'src'
+        content = 'data:image/png;base64,' + base64.encodestring(image.getvalue()).decode()
     else:
         raise RuntimeError('Unable to pack object\n  type: ' + type_)
 
