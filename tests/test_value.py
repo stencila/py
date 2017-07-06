@@ -2,7 +2,6 @@ import math
 
 import pytest
 import pandas
-import matplotlib
 import matplotlib.pyplot as plt
 
 from stencila.value import type, pack, unpack
@@ -34,7 +33,7 @@ def test_type():
     assert type(plt.plot(range(5))) == 'matplotlib'
 
     assert type(dict(type='html', content='<img>')) == 'html'
-    assert type(dict(type='png', content='')) == 'png'
+    assert type(dict(type='image', content='')) == 'image'
     assert type(dict(type=1)) == 'object'
 
 

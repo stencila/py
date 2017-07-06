@@ -34,7 +34,7 @@ class HostHttpServer(object):
         """
         # Setup a logger for Werkzeug (which prevents it from printing to stdout)
         logger = logging.getLogger('werkzeug')
-        log_path = os.path.join(self._host._home, 'logs', 'py-host-http-server.log')
+        log_path = os.path.join(self._host.temp_dir(), 'logs', 'py-host-http-server.log')
         if not os.path.exists(os.path.dirname(log_path)):
             os.makedirs(os.path.dirname(log_path))
         handler = logging.FileHandler(log_path)
@@ -147,7 +147,7 @@ class HostHttpServer(object):
     def home(self, request):
         if 'application/json' in request.headers.get('accept', ''):
             return Response(
-                to_json(self._host.options()),
+                to_json(self._host.manifest()),
                 mimetype='application/json'
             )
         else:

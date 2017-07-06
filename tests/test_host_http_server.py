@@ -75,7 +75,7 @@ def test_home():
 
     r = s.home(request(headers={'Accept': 'application/json'}))
     assert r.status == '200 OK'
-    assert json.loads(r.data.decode()) == host.options()
+    assert json.loads(r.data.decode()) == host.manifest()
 
     r = s.home(request())
     assert r.status == '200 OK'

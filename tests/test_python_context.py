@@ -29,8 +29,8 @@ def test_runCode():
 
     output = s.runCode('plt.plot(range(5))')['output']
     assert output['type'] == 'image'
-    assert output['format'] == 'png'
-    assert output['content'][:10] == 'iVBORw0KGg'
+    assert output['format'] == 'src'
+    assert output['content'][:10] == 'data:image'
 
 
 def test_callCode():

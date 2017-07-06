@@ -1,8 +1,15 @@
+import collections
+import datetime
+import json
 import os
 import platform
 import random
+import signal
 import string
 import subprocess
+import sys
+import tempfile
+import time
 
 from .version import __version__
 from .python_context import PythonContext
@@ -34,11 +41,56 @@ class Host(object):
     """
 
     def __init__(self):
-        self._home = os.path.join(os.path.expanduser('~'), '.stencila')
+        self._id = 'py-' + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(64))
         self._servers = {}
+        self._started = None
+        self._heartbeat = None
         self._instances = {}
 
-    def options(self):
+    @property
+    def id(self):
+        return self._id
+
+    def user_dir(self):
+        """
+        Get the current user's Stencila data directory.
+
+        This is the directory that Stencila configuration settings, such as the
+        installed Stencila hosts, and document buffers get stored.
+        """
+
+        osn = platform.system().lower()
+        if osn == 'darwin':
+            return os.path.join(os.getenv("HOME"), 'Library', 'Application Support', 'Stencila')
+        elif osn == 'linux':
+            return os.path.join(os.getenv("HOME"), '.local', 'share', 'stencila')
+        elif osn == 'windows':
+            return os.path.join(os.getenv("APPDATA"), 'Stencila')
+        else:
+            return os.path.join(os.getenv("HOME"), 'stencila')
+
+    def temp_dir(self):
+        """
+        Get the current Stencila temporary directory
+        """
+        return os.path.join(tempfile.gettempdir(), 'stencila')
+
+    def environ(self):
+        """
+        Get the environment of this host including the version of Node.js and versions
+        of installed packages (local and globals)
+
+        :returns: The environment as a dictionary of dictionaries
+        """
+        # TODO dictionary of loaded package names and versions
+        return {
+            'version': sys.version,
+            'platform': platform.system().lower(),
+            'arch': platform.machine(),
+            'packages': {}
+        }
+
+    def manifest(self):
         """
         Get a manifest for this host
 
@@ -48,20 +100,41 @@ class Host(object):
 
         :returns: A manifest object
         """
-        return {
-            'stencila': {
-                'package': 'py',
-                'version': __version__
-            },
-            'urls': self.urls,
-            'schemes': {
-                'new': {
-                    'PythonContext': PythonContext.spec,
-                    'SqliteContext': SqliteContext.spec
-                }
-            },
-            'instances': list(self._instances.keys())
-        }
+        od = collections.OrderedDict
+        manifest = od([
+            ('stencila', od([
+                ('package', 'py'),
+                ('version', __version__)
+            ])),
+            ('run', [sys.executable, '-c', 'import stencila; stencila.run(echo=True)']),
+            ('schemes', od([
+                ('new', od([
+                    ('PythonContext', PythonContext.spec),
+                    ('SqliteContext', SqliteContext.spec)
+                ]))
+            ]))
+        ])
+        if self._started:
+            manifest.update([
+                ('id', self._id),
+                ('process', os.getpid()),
+                ('urls', self.urls),
+                ('instances', list(self._instances.keys()))
+            ])
+
+        return manifest
+
+    def install(self):
+        """
+        Installation of a host involves creating a file `py.json` inside of
+        the user's Stencila data (see `user_dir()`) directory which describes
+        the capabilities of this host.
+        """
+        dir = os.path.join(self.user_dir(), 'hosts')
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        with open(os.path.join(dir, 'py.json'), 'w') as file:
+            file.write(json.dumps(self.manifest(), indent=True))
 
     def post(self, type, name=None, options={}):
         """
@@ -127,7 +200,7 @@ class Host(object):
         else:
             raise Exception('Unknown instance: %s' % id)
 
-    def start(self):
+    def start(self, address='127.0.0.1', port=2000, quiet=False):
         """
         Start serving this host
 
@@ -137,13 +210,28 @@ class Host(object):
         :returns: self
         """
         if 'http' not in self._servers:
-            server = HostHttpServer(self)
+            # Start HTTP server
+            server = HostHttpServer(self, address, port)
             self._servers['http'] = server
             server.start()
-            print('Host is served at: %s' % ', '.join(self.urls))
+
+            # Record start times
+            self._started = datetime.datetime.now()
+            self._heartbeat = datetime.datetime.now()
+
+            # Register as a running host by creating a run file
+            dir = os.path.join(self.temp_dir(), 'hosts')
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            with open(os.path.join(dir, self.id + '.json'), 'w', 0o600) as file:
+                file.write(json.dumps(self.manifest(), indent=True))
+
+            if not quiet:
+                print('Host has started at: %s' % ', '.join(self.urls))
+
         return self
 
-    def stop(self):
+    def stop(self, quiet=False):
         """
         Stop serving this host
 
@@ -153,7 +241,46 @@ class Host(object):
         if server:
             server.stop()
             del self._servers['http']
+
+        # Deregister as a running host
+        path = os.path.join(self.temp_dir(), 'hosts', self.id + '.json')
+        if os.path.exists(path):
+            os.remove(path)
+
+        if not quiet:
+            print('Host has stopped')
+
         return self
+
+    def run(self, address='127.0.0.1', port=2000, quiet=False, echo=False):
+        """
+        Start serving this host and wait for connections
+        indefinitely
+        """
+        if echo:
+            quiet = True
+        self.start(address=address, port=port, quiet=quiet)
+
+        if echo:
+            print(json.dumps(self.manifest(), indent=True))
+            sys.stdout.flush()
+
+        if not quiet:
+            print('Use Ctrl+C to stop')
+
+        # Handle SIGINT if this process is killed somehow other than by
+        # Ctrl+C (e.g. by a parent peer)
+        def stop(signum, frame):
+            self.stop()
+            sys.exit(0)
+        signal.signal(signal.SIGINT, stop)
+
+        while True:
+            try:
+                time.sleep(0x7FFFFFFF)
+            except KeyboardInterrupt:
+                self.stop()
+                break
 
     @property
     def servers(self):
