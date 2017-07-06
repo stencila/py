@@ -52,5 +52,5 @@ class SqliteContext(object):
 SqliteContext.spec = {
     'name': 'SqliteContext',
     'base': 'Context',
-    'aliases': ['sqlite']
+    'aliases': ['sql', 'sqlite']
 }
