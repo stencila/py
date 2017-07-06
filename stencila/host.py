@@ -61,7 +61,7 @@ class Host(object):
 
         osn = platform.system().lower()
         if osn == 'darwin':
-            return os.path.join(os.getenv("HOME"), 'Library', 'Preferences', 'Stencila')
+            return os.path.join(os.getenv("HOME"), 'Library', 'Application Support', 'Stencila')
         elif osn == 'linux':
             return os.path.join(os.getenv("HOME"), '.local', 'share', 'stencila')
         elif osn == 'windows':
