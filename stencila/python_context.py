@@ -1,4 +1,5 @@
 import imp
+import os
 from six import exec_
 import sys
 import traceback
@@ -18,7 +19,11 @@ undefined = object()
 
 class PythonContext(object):
 
-    def __init__(self):
+    def __init__(self, dir=None):
+        self._dir = dir
+        if dir:
+            os.chdir(dir)
+
         self._global_scope = {
             'numpy': numpy,
             'np': numpy,
