@@ -93,14 +93,52 @@ class HostHttpServer(object):
 
         try:
             response = method(request, *args)
+
+            # CORS headers are used to control access by browsers. In particular, CORS
+            # can prevent access by XHR requests made by Javascript in third party sites.
+            # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
+
+            # Get the Origin header (sent in CORS and POST requests) and fall back to Referer header
+            # if it is not present (either of these should be present in most browser requests)
+            origin = request.headers.get('Origin')
+            if not origin and request.headers.get('Referer'):
+                match = re.match(r'^https?://([\w.]+)(:\d+)?', request.headers.get('Referer'))
+                if match:
+                    origin = match.group(0)
+
+            # Check that host is in whitelist
+            if origin:
+                match = re.match(r'^https?://([\w.]+)(:\d+)?', origin)
+                if match:
+                    host = match.group(1)
+                    if host not in ('127.0.0.1', 'localhost', 'open.stenci.la'):
+                        origin = None
+                else:
+                    origin = None
+
+            # If an origin has been found and is authorized set CORS headers
+            # Without these headers browser XHR request get an error like:
+            #     No 'Access-Control-Allow-Origin' header is present on the requested resource.
+            #     Origin 'http://evil.hackers:4000' is therefore not allowed access.
+            if origin:
+                # 'Simple' requests (GET and POST XHR requests)
+                response.headers['Access-Control-Allow-Origin'] = origin
+                # Allow sending cookies and other credentials
+                response.headers['Access-Control-Allow-Credentials'] = 'true'
+                # Pre-flighted requests by OPTIONS method (made before PUT, DELETE etc
+                # XHR requests and in other circumstances)
+                # get additional CORS headers
+                if request.method == 'OPTIONS':
+                    # Allowable methods and headers
+                    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+                    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                    # "how long the response to the preflight request can be cached for without
+                    # sending another preflight request"
+                    response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
         except Exception:
             stream = StringIO() if six.PY3 else BytesIO()
             traceback.print_exc(file=stream)
             response = Response(stream.getvalue(), status=500)
-
-        # CORS access header added to all requests
-        # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
-        response.headers['Access-Control-Allow-Origin'] = '*'
 
         return response(environ, start_response)
 
@@ -134,15 +172,7 @@ class HostHttpServer(object):
         return None
 
     def options(self, request):
-        return Response(
-            # CORS preflight headers. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
-            headers={
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
-                'Access-Control-Max-Age': '1728000'
-            }
-        )
+        return Response()
 
     def home(self, request):
         if 'application/json' in request.headers.get('accept', ''):
