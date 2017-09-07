@@ -1,3 +1,5 @@
+import os
+import re
 import sqlite3
 import string
 
@@ -10,8 +12,16 @@ undefined = object()
 
 class SqliteContext(object):
 
-    def __init__(self):
-        self._connection = sqlite3.connect(':memory:')
+    def __init__(self, dir=None):
+        self._dir = dir
+
+        db = ':memory:'
+        if dir:
+            dbs = [file for file in os.listdir(dir) if re.match(r'^.*\.(sqlite(3?)|db(3?))$', file)]
+            if len(dbs):
+                db = os.path.join(dir, dbs[0])
+
+        self._connection = sqlite3.connect(db)
 
     def runCode(self, code):
         errors = None

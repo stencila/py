@@ -31,11 +31,13 @@ def test_handle():
     s.start()
 
     r = c.get('/')
+    assert r.status == '403 FORBIDDEN'
+
+    r = c.get('/?ticket=%s' % s.ticket_create())
     assert r.status == '200 OK'
 
-    r = c.get('/!foo-bar')
+    r = c.get('/foo/bar/?ticket=%s' % s.ticket_create())
     assert r.status == '500 INTERNAL SERVER ERROR'
-    assert re.search('Traceback', r.data.decode('utf-8')), 'returns a traceback of error'
 
     s.stop()
 
@@ -64,10 +66,6 @@ def test_options():
 
     r = s.options(request())
     assert r.status == '200 OK'
-    assert r.headers['Access-Control-Allow-Origin'] == '*'
-    assert r.headers['Access-Control-Allow-Methods'] == 'GET, POST, PUT, DELETE, OPTIONS'
-    assert r.headers['Access-Control-Allow-Headers'] == 'Content-Type'
-    assert r.headers['Access-Control-Max-Age'] == '1728000'
 
 
 def test_home():
