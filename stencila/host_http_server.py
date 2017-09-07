@@ -4,7 +4,9 @@ import os
 import six
 from six.moves import socketserver
 from io import BytesIO, StringIO
+import random
 import re
+import string
 import threading
 import traceback
 import mimetypes
@@ -15,11 +17,15 @@ from werkzeug.serving import BaseWSGIServer
 
 class HostHttpServer(object):
 
-    def __init__(self, host, address='127.0.0.1', port=2000):
+    def __init__(self, host, address='127.0.0.1', port=2000, authorization=True):
         self._host = host
         self._address = address
         self._port = port
+        self._authorization = authorization
+
         self._server = None
+        self._tickets = []
+        self._tokens = []
 
     @property
     def url(self):
@@ -80,67 +86,97 @@ class HostHttpServer(object):
 
     def __call__(self, environ, start_response):
         """
-        Handle a HTTP request
-
-        This is the WSGI application interface.
-        It does conversion of JSON request data into method args and
-        method output back into a JSON response
+        The WSGI application interface.
         """
         request = Request(environ)
+        response = self.handle(request)
+        return response(environ, start_response)
+
+    def handle(self, request):
+        """
+        Handle a HTTP request
+        """
+        # Check authorization. Note that browsers do not send credentials (e.g. cookies)
+        # in OPTIONS requests
+        cookie = None
+        if self._authorization and request.method != 'OPTIONS':
+            # Check for ticket
+            ticket = request.args.get('ticket')
+            if ticket:
+                # Check ticket is valid
+                if not self.ticket_check(ticket):
+                    return Response(status=403)
+                else:
+                    # Set token cookie
+                    cookie = 'token=%s; Path=/' % self.token_create()
+            else:
+                # Check for token
+                token = request.cookies.get('token')
+                if not token or not self.token_check(token):
+                    return Response(status=403)
+
+        # Route request to a method
         method_args = self.route(request.method, request.path)
         method = method_args[0]
         args = method_args[1:]
+        if method is None:
+            return Response(status=400)
 
+        # Run method
         try:
             response = method(request, *args)
-
-            # CORS headers are used to control access by browsers. In particular, CORS
-            # can prevent access by XHR requests made by Javascript in third party sites.
-            # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
-
-            # Get the Origin header (sent in CORS and POST requests) and fall back to Referer header
-            # if it is not present (either of these should be present in most browser requests)
-            origin = request.headers.get('Origin')
-            if not origin and request.headers.get('Referer'):
-                match = re.match(r'^https?://([\w.]+)(:\d+)?', request.headers.get('Referer'))
-                if match:
-                    origin = match.group(0)
-
-            # Check that host is in whitelist
-            if origin:
-                match = re.match(r'^https?://([\w.]+)(:\d+)?', origin)
-                if match:
-                    host = match.group(1)
-                    if host not in ('127.0.0.1', 'localhost', 'open.stenci.la'):
-                        origin = None
-                else:
-                    origin = None
-
-            # If an origin has been found and is authorized set CORS headers
-            # Without these headers browser XHR request get an error like:
-            #     No 'Access-Control-Allow-Origin' header is present on the requested resource.
-            #     Origin 'http://evil.hackers:4000' is therefore not allowed access.
-            if origin:
-                # 'Simple' requests (GET and POST XHR requests)
-                response.headers['Access-Control-Allow-Origin'] = origin
-                # Allow sending cookies and other credentials
-                response.headers['Access-Control-Allow-Credentials'] = 'true'
-                # Pre-flighted requests by OPTIONS method (made before PUT, DELETE etc
-                # XHR requests and in other circumstances)
-                # get additional CORS headers
-                if request.method == 'OPTIONS':
-                    # Allowable methods and headers
-                    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-                    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-                    # "how long the response to the preflight request can be cached for without
-                    # sending another preflight request"
-                    response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
         except Exception:
             stream = StringIO() if six.PY3 else BytesIO()
             traceback.print_exc(file=stream)
-            response = Response(stream.getvalue(), status=500)
+            return Response(stream.getvalue(), status=500)
 
-        return response(environ, start_response)
+        # CORS used to control access by browsers. In particular, CORS
+        # can prevent access by XHR requests made by Javascript in third party sites.
+        # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
+
+        # Get the Origin header (sent in CORS and POST requests) and fall back to Referer header
+        # if it is not present (either of these should be present in most browser requests)
+        origin = request.headers.get('Origin')
+        if not origin and request.headers.get('Referer'):
+            match = re.match(r'^https?://([\w.]+)(:\d+)?', request.headers.get('Referer'))
+            if match:
+                origin = match.group(0)
+
+        # Check that host is in whitelist
+        if origin:
+            match = re.match(r'^https?://([\w.]+)(:\d+)?', origin)
+            if match:
+                host = match.group(1)
+                if host not in ('127.0.0.1', 'localhost', 'open.stenci.la'):
+                    origin = None
+            else:
+                origin = None
+
+        # If an origin has been found and is authorized set CORS headers
+        # Without these headers browser XHR request get an error like:
+        #     No 'Access-Control-Allow-Origin' header is present on the requested resource.
+        #     Origin 'http://evil.hackers:4000' is therefore not allowed access.
+        if origin:
+            # 'Simple' requests (GET and POST XHR requests)
+            response.headers['Access-Control-Allow-Origin'] = origin
+            # Allow sending cookies and other credentials
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            # Pre-flighted requests by OPTIONS method (made before PUT, DELETE etc
+            # XHR requests and in other circumstances)
+            # get additional CORS headers
+            if request.method == 'OPTIONS':
+                # Allowable methods and headers
+                response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                # "how long the response to the preflight request can be cached for without
+                # sending another preflight request"
+                response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
+
+        # Set cookie header if necessary
+        if cookie:
+            response.headers['Set-Cookie'] = cookie
+
+        return response
 
     def route(self, verb, path):
         """
@@ -228,6 +264,52 @@ class HostHttpServer(object):
             '',
             mimetype='application/json'
         )
+
+    def ticket_create(self):
+        """
+        Create a ticket (a single-use access token)
+        """
+        ticket = ''.join(random.choice(
+            string.ascii_lowercase + string.ascii_uppercase + string.digits
+        ) for _ in range(12))
+        self._tickets.append(ticket)
+        return ticket
+
+    def ticket_check(self, ticket):
+        """
+        Check that a ticket is valid.
+        *
+        If it is, then it is removed from the list of tickets
+        and `true` is returned. Otherwise, returns `false`
+        """
+        if ticket in self._tickets:
+            self._tickets.remove(ticket)
+            return True
+        else:
+            return False
+
+    def ticketed_url(self):
+        """
+        Create a URL with a ticket query parameter so users
+        can connect to this server
+        """
+        return self.url + '/?ticket=' + self.ticket_create()
+
+    def token_create(self):
+        """
+        Create a token (a multiple-use access token)
+        """
+        token = ''.join(random.choice(
+            string.ascii_lowercase + string.ascii_uppercase + string.digits
+        ) for _ in range(64))
+        self._tokens.append(token)
+        return token
+
+    def token_check(self, token):
+        """
+        Check that a token is valid.
+        """
+        return token in self._tokens
 
 
 class JSONEncoder(json.JSONEncoder):

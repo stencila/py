@@ -16,9 +16,14 @@ from .python_context import PythonContext
 from .sqlite_context import SqliteContext
 from .host_http_server import HostHttpServer
 
+# Resource types available
 TYPES = {
     'PythonContext': PythonContext,
     'SqliteContext': SqliteContext
+}
+# Resource types specifications
+TYPES_SPECS = {
+    name: clas.spec for (name, clas) in TYPES.items()
 }
 
 
@@ -107,19 +112,20 @@ class Host(object):
                 ('version', __version__)
             ])),
             ('run', [sys.executable, '-c', 'import stencila; stencila.run(echo=True)']),
-            ('schemes', od([
-                ('new', od([
-                    ('PythonContext', PythonContext.spec),
-                    ('SqliteContext', SqliteContext.spec)
-                ]))
-            ]))
+            ('types', TYPES_SPECS),
+            # For compatability with 0.27 API
+            ('schemes', {
+                'new': TYPES_SPECS
+            })
         ])
         if self._started:
             manifest.update([
                 ('id', self._id),
                 ('process', os.getpid()),
-                ('urls', self.urls),
-                ('instances', list(self._instances.keys()))
+                ('servers', self.servers),
+                ('instances', list(self._instances.keys())),
+                # For compatability with 0.27 API
+                ('urls', self.urls)
             ])
 
         return manifest
@@ -200,7 +206,7 @@ class Host(object):
         else:
             raise Exception('Unknown instance: %s' % id)
 
-    def start(self, address='127.0.0.1', port=2000, quiet=False):
+    def start(self, address='127.0.0.1', port=2000, authorization=True, quiet=False):
         """
         Start serving this host
 
@@ -211,7 +217,7 @@ class Host(object):
         """
         if 'http' not in self._servers:
             # Start HTTP server
-            server = HostHttpServer(self, address, port)
+            server = HostHttpServer(self, address, port, authorization)
             self._servers['http'] = server
             server.start()
 
@@ -227,7 +233,8 @@ class Host(object):
                 file.write(json.dumps(self.manifest(), indent=True))
 
             if not quiet:
-                print('Host has started at: %s' % ', '.join(self.urls))
+                urls = [s.ticketed_url() for s in self._servers.values()]
+                print('Host has started at: %s' % ', '.join(urls))
 
         return self
 
@@ -252,14 +259,14 @@ class Host(object):
 
         return self
 
-    def run(self, address='127.0.0.1', port=2000, quiet=False, echo=False):
+    def run(self, address='127.0.0.1', port=2000, authorization=True, quiet=False, echo=False):
         """
         Start serving this host and wait for connections
         indefinitely
         """
         if echo:
             quiet = True
-        self.start(address=address, port=port, quiet=quiet)
+        self.start(address=address, port=port, authorization=authorization, quiet=quiet)
 
         if echo:
             print(json.dumps(self.manifest(), indent=True))
@@ -284,7 +291,14 @@ class Host(object):
 
     @property
     def servers(self):
-        return self._servers.keys()
+        servers = {}
+        for name in self._servers.keys():
+            server = self._servers[name]
+            servers[name] = {
+                'url': server.url,
+                'ticket': server.ticket_create()
+            }
+        return servers
 
     @property
     def urls(self):

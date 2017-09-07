@@ -17,6 +17,9 @@ build:
 	python setup.py bdist_wheel
 .PHONY: build
 
+install:
+	pip install --user .
+
 lint:
 	pylint stencila
 
