@@ -1,3 +1,4 @@
+import ast
 import imp
 import os
 from six import exec_
@@ -31,6 +32,15 @@ class PythonContext(object):
             'plt': plt,
             'pandas': pandas,
             'pd': pandas
+        }
+
+    def analyseCode(self, code, exprOnly=False):
+        tree = ast.parse(code, mode='exec')
+        inputs = []
+        outputs = []
+        return {
+            'inputs': inputs,
+            'outputs': outputs
         }
 
     def runCode(self, code):
