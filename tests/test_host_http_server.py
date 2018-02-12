@@ -117,10 +117,10 @@ def test_put():
     s = HostHttpServer(host)
 
     r1 = s.post(request(), 'PythonContext')
-    r2 = s.put(request(data='{"code":"6*7"}'), json.loads(r1.data.decode()), 'runCode')
+    r2 = s.put(request(data='{"code":"6*7"}'), json.loads(r1.data.decode()), 'executeCode')
     assert r2.status == '200 OK'
     assert r2.headers['content-type'] == 'application/json'
-    assert json.loads(r2.data.decode())['output']['content'] == '42'
+    assert json.loads(r2.data.decode())['value']['data'] == '42'
 
 
 def test_delete():
