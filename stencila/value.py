@@ -124,35 +124,35 @@ def unpack(pkg):
     if not isinstance(pkg, dict):
         raise RuntimeError('Package should be an `Object`')
 
-    if not ('type' in pkg and 'format' in pkg and 'content' in pkg):
-        raise RuntimeError('Package should have fields `type`, `format`, `content`')
+    if not ('type' in pkg and 'format' in pkg and 'data' in pkg):
+        raise RuntimeError('Package should have fields `type`, `format`, `data`')
 
     type_ = pkg['type']
     format = pkg['format']
-    content = pkg['content']
+    data = pkg['data']
 
     if type_ == 'null':
         return None
     elif type_ == 'boolean':
-        return content == 'true'
+        return data == 'true'
     elif type_ == 'integer':
-        return int(content)
+        return int(data)
     elif type_ == 'float':
-        return float(content)
+        return float(data)
     elif type_ == 'string':
-        return content
+        return data
     elif type_ == 'object' or type_ == 'array':
-        return json.loads(content)
+        return json.loads(data)
     elif type_ == 'table':
         if format == 'json':
-            table = json.loads(content, object_pairs_hook=OrderedDict)
+            table = json.loads(data, object_pairs_hook=OrderedDict)
             df = pandas.DataFrame()
             for name, column in table['data'].items():
                 df[name] = column['values']
             return df
         elif format in ('csv', 'tsv'):
             sep = ',' if format == 'csv' else '\t'
-            return pandas.read_csv(BytesIO(content.encode()), sep=sep)
+            return pandas.read_csv(BytesIO(data.encode()), sep=sep)
         else:
             raise RuntimeError('Unable to unpack\n  type: ' + type_ + '\n  format: ' + format)
     else:
