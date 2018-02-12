@@ -58,16 +58,16 @@ def pack(value):
     format_ = 'text'
 
     if value is None:
-        content = 'null'
+        data = 'null'
     elif type_ == 'boolean':
-        content = 'true' if value else 'false'
+        data = 'true' if value else 'false'
     elif type_ in ('integer', 'float'):
-        content = repr(value)
+        data = repr(value)
     elif type_ == 'string':
-        content = value
+        data = value
     elif type_ in ('array', 'object'):
         format_ = 'json'
-        content = json.dumps(value, separators=(',', ':'))
+        data = json.dumps(value, separators=(',', ':'))
     elif type_ == 'table':
         format_ = 'json'
         columns = OrderedDict()
@@ -98,17 +98,17 @@ def pack(value):
                 ('type', column_type),
                 ('values', values)
             ])
-        content = json.dumps(OrderedDict([('type', 'table'), ('data', columns)]))
+        data = json.dumps(OrderedDict([('type', 'table'), ('data', columns)]))
     elif type_ == 'matplotlib':
         image = BytesIO()
         matplotlib.pyplot.savefig(image, format='png')
         type_ = 'image'
-        format_ = 'src'
-        content = 'data:image/png;base64,' + base64.encodestring(image.getvalue()).decode()
+        src = 'data:image/png;base64,' + base64.encodestring(image.getvalue()).decode()
+        return {'type': type_, 'src': src}
     else:
         raise RuntimeError('Unable to pack object\n  type: ' + type_)
 
-    return {'type': type_, 'format': format_, 'content': content}
+    return {'type': type_, 'format': format_, 'data': data}
 
 
 def unpack(pkg):

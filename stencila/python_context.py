@@ -34,19 +34,26 @@ class PythonContext(object):
             'pd': pandas
         }
 
+    def getLibraries(self):
+        # TODO: return registered function libraries
+        return []
+
     def analyseCode(self, code, exprOnly=False):
-        tree = ast.parse(code, mode='exec')
+        # TODO: analysis of tree to determine inputs and outputs
+        # tree = ast.parse(code, mode='exec')
         inputs = []
         outputs = []
+        messages = []
         return {
             'inputs': inputs,
-            'outputs': outputs
+            'outputs': outputs,
+            'messages': messages
         }
 
-    def runCode(self, code):
-        """
-        Run Python code
-        """
+    def executeCode(self, code, inputs={}, exprOnly=False):
+        # Extract names and values of inputs
+        names = inputs.keys()
+        values = [unpack(package) for package in inputs.values()]
 
         # Execute the code
         errors = None
@@ -79,42 +86,13 @@ class PythonContext(object):
             if output is undefined and artifact:
                 output = artifact
 
-        return {
-            'errors': errors,
-            'output': None if output is undefined else pack(output)
-        }
-
-    def callCode(self, code, inputs={}):
-        """
-        Call Python code
-        """
-
-        # Extract names and values of inputs
-        names = inputs.keys()
-        values = [unpack(package) for package in inputs.values()]
-
-        # Create a function within a temporary module having
-        # input names as parameters and code as body
-        if not code.strip():
-            code = 'pass'
-        func = 'def func(%s):\n%s\n' % (
-            ','.join(names),
-            '\n'.join('    %s' % line for line in code.split('\n'))
-        )
-        module = imp.new_module('temp')
-
-        # Call the function
-        output = undefined
-        errors = None
-        try:
-            exec_(func, self._global_scope, module.__dict__)
-            output = module.func(*values)
-        except:
-            errors = self._errors()
+            # Errors should be a list
+            errors = []
 
         return {
-            'errors': errors,
-            'output': None if output is undefined else pack(output)
+            'messages': errors,
+            'value': None if output is undefined else pack(output),
+            'output': None
         }
 
     def _errors(self):
@@ -144,6 +122,7 @@ class PythonContext(object):
             line = 0
 
         return [{
+            'type': 'error',
             'line': line,
             'column': 0,
             'message': exc_type.__name__ + ': ' + traceback._some_str(exc_value)
