@@ -20,7 +20,7 @@ def test_host():
 def test_user_dir():
     h = Host()
     if platform.system().lower() == 'linux' and os.getenv("HOME"):
-        assert h.user_dir() == os.path.join(os.getenv("HOME"), '.local', 'share', 'stencila')
+        assert h.user_dir() == os.path.join(os.getenv("HOME"), '.stencila')
 
 
 def test_temp_dir():
@@ -34,7 +34,7 @@ def test_host_manifest():
     manifest = h.manifest()
     assert manifest['stencila']['package'] == 'py'
     assert manifest['stencila']['version'] == __version__
-    assert manifest['schemes']['new']['PythonContext'] == PythonContext.spec
+    assert manifest['types']['PythonContext'] == PythonContext.spec
 
     h.start()
     manifest = h.manifest()
@@ -45,10 +45,10 @@ def test_host_manifest():
     h.stop()
 
 
-def test_host_install():
+def test_host_register():
     h = Host()
 
-    h.install()
+    h.register()
     manifest = h.manifest()
 
     with open(os.path.join(h.user_dir(), 'hosts', 'py.json')) as manifest_file:
@@ -110,7 +110,7 @@ def test_host_start_stop():
     h.start()
     assert h.servers, 'http'
     assert len(h.servers) == 1
-    assert len(h.manifest()['urls']) == 1
+    assert len(h.manifest()['servers']) == 1
     h.stop()
     assert len(h.servers) == 0
-    assert len(h.manifest()['urls']) == 0
+    assert len(h.manifest()['servers']) == 0
