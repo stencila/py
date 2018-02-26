@@ -37,12 +37,12 @@ def test_type():
     assert type(dict(type=1)) == 'object'
 
 
-def check(obj, type, format, content=None):
+def check(obj, type, format, data=None):
     p = pack(obj)
     assert p['type'] == type
     assert p['format'] == format
-    if content:
-        assert p['content'] == content
+    if data:
+        assert p['data'] == data
 
 
 def test_pack_primitive_types():
@@ -119,8 +119,8 @@ def test_pack_works_for_plots():
 
 
 def test_unpack_can_take_a_list_or_a_JSON_string():
-    assert unpack('{"type":"null","format":"text","content":"null"}') is None
-    assert unpack({'type': 'null', 'format': 'text', 'content': 'null'}) is None
+    assert unpack('{"type":"null","format":"text","data":"null"}') is None
+    assert unpack({'type': 'null', 'format': 'text', 'data': 'null'}) is None
 
 
 def test_unpack_errors_if_package_is_malformed():
@@ -128,7 +128,7 @@ def test_unpack_errors_if_package_is_malformed():
         unpack(1), 'should be a list'
 
     with pytest.raises(Exception):
-        unpack({}), 'should have fields `type`, `format`, `content`'
+        unpack({}), 'should have fields `type`, `format`, `data`'
     with pytest.raises(Exception):
         unpack('{}')
     with pytest.raises(Exception):
@@ -137,40 +137,40 @@ def test_unpack_errors_if_package_is_malformed():
         unpack({'type': 'null', 'format': 'text'})
 
     with pytest.raises(Exception):
-        unpack({'type': 'foo', 'format': 'foo', 'content': 'bar'})
+        unpack({'type': 'foo', 'format': 'foo', 'data': 'bar'})
 
 
 def test_unpack_works_for_primitive_types():
-    assert unpack({'type': 'null', 'format': 'text', 'content': 'null'}) is None
+    assert unpack({'type': 'null', 'format': 'text', 'data': 'null'}) is None
 
-    assert unpack({'type': 'boolean', 'format': 'text', 'content': 'true'}) is True
-    assert unpack({'type': 'boolean', 'format': 'text', 'content': 'false'}) is False
+    assert unpack({'type': 'boolean', 'format': 'text', 'data': 'true'}) is True
+    assert unpack({'type': 'boolean', 'format': 'text', 'data': 'false'}) is False
 
-    assert unpack({'type': 'integer', 'format': 'text', 'content': '42'}) == 42
-    assert unpack({'type': 'integer', 'format': 'text', 'content': '1000000000'}) == 1000000000
+    assert unpack({'type': 'integer', 'format': 'text', 'data': '42'}) == 42
+    assert unpack({'type': 'integer', 'format': 'text', 'data': '1000000000'}) == 1000000000
 
-    assert unpack({'type': 'float', 'format': 'text', 'content': '3.12'}) == 3.12
-    assert unpack({'type': 'float', 'format': 'text', 'content': '1e20'}) == 1e20
+    assert unpack({'type': 'float', 'format': 'text', 'data': '3.12'}) == 3.12
+    assert unpack({'type': 'float', 'format': 'text', 'data': '1e20'}) == 1e20
 
-    assert unpack({'type': 'string', 'format': 'text', 'content': 'Yo!'}) == 'Yo!'
+    assert unpack({'type': 'string', 'format': 'text', 'data': 'Yo!'}) == 'Yo!'
 
 
 def test_unpack_works_for_objects():
-    assert unpack({'type': 'object', 'format': 'json', 'content': '{}'}) == {}
+    assert unpack({'type': 'object', 'format': 'json', 'data': '{}'}) == {}
     assert unpack(
-        {'type': 'object', 'format': 'json', 'content': '{"a":1,"b":"foo","c":[1,2,3]}'}
+        {'type': 'object', 'format': 'json', 'data': '{"a":1,"b":"foo","c":[1,2,3]}'}
     ) == {'a': 1, 'b': 'foo', 'c': [1, 2, 3]}
 
 
 def test_unpack_works_for_arrays():
-    assert unpack({'type': 'array', 'format': 'json', 'content': '[]'}) == []
-    assert unpack({'type': 'array', 'format': 'json', 'content': '[1,2,3,4,5]'}) == [1, 2, 3, 4, 5]
+    assert unpack({'type': 'array', 'format': 'json', 'data': '[]'}) == []
+    assert unpack({'type': 'array', 'format': 'json', 'data': '[1,2,3,4,5]'}) == [1, 2, 3, 4, 5]
 
 
 def test_unpack_works_for_tabular_data():
     data = pandas.DataFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})
 
-    assert unpack({'type': 'table', 'format': 'json', 'content': '''
+    assert unpack({'type': 'table', 'format': 'json', 'data': '''
     {
         "type":"table",
         "data": {
@@ -178,8 +178,8 @@ def test_unpack_works_for_tabular_data():
             "b": {"type": "string", "values": ["x", "y", "z"]}
         }
     }'''}).to_csv() == data.to_csv()
-    assert unpack({'type': 'table', 'format': 'csv', 'content': 'a,b\n1,x\n2,y\n3,z'}).to_csv() == data.to_csv()
-    assert unpack({'type': 'table', 'format': 'tsv', 'content': 'a\tb\n1\tx\n2\ty\n3\tz'}).to_csv() == data.to_csv()
+    assert unpack({'type': 'table', 'format': 'csv', 'data': 'a,b\n1,x\n2,y\n3,z'}).to_csv() == data.to_csv()
+    assert unpack({'type': 'table', 'format': 'tsv', 'data': 'a\tb\n1\tx\n2\ty\n3\tz'}).to_csv() == data.to_csv()
 
     with pytest.raises(Exception):
-        unpack({'type': 'table', 'format': 'foo', 'content': 'bar'})
+        unpack({'type': 'table', 'format': 'foo', 'data': 'bar'})

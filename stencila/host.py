@@ -13,13 +13,14 @@ import time
 
 from .version import __version__
 from .python_context import PythonContext
-from .sqlite_context import SqliteContext
+# from .sqlite_context import SqliteContext
 from .host_http_server import HostHttpServer
 
 # Resource types available
 TYPES = {
     'PythonContext': PythonContext,
-    'SqliteContext': SqliteContext
+    # Temporarily disable this SqliteContext which does not support new API
+    # 'SqliteContext': SqliteContext
 }
 # Resource types specifications
 TYPES_SPECS = {

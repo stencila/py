@@ -21,6 +21,12 @@ class HostHttpServer(object):
         self._host = host
         self._address = address
         self._port = port
+
+        auth = os.environ.get('STENCILA_AUTHORIZATION')
+        if auth == 'true':
+            authorization = True
+        elif auth == 'false':
+            authorization = False
         self._authorization = authorization
 
         self._server = None
@@ -293,7 +299,10 @@ class HostHttpServer(object):
         Create a URL with a ticket query parameter so users
         can connect to this server
         """
-        return self.url + '/?ticket=' + self.ticket_create()
+        url = self.url
+        if self._authorization:
+            url += '/?ticket=' + self.ticket_create()
+        return url
 
     def token_create(self):
         """

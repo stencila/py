@@ -10,48 +10,37 @@ def test_new():
     assert isinstance(s, PythonContext)
 
 
-def test_runCode():
+def test_executeCode():
     s = PythonContext()
 
-    assert s.runCode('') == {'errors': None, 'output': None}
+    assert s.executeCode('') == {'messages': [], 'value': None, 'output': None}
 
-    assert s.runCode('x = 42') == {'errors': None, 'output': None}
+    assert s.executeCode('x = 42') == {'messages': [], 'value': None, 'output': None}
 
-    assert s.runCode('x') == {'errors': None, 'output': pack(42)}
+    assert s.executeCode('x') == {'messages': [], 'value': pack(42), 'output': None}
 
-    err = s.runCode('foo')['errors'][0]
+    err = s.executeCode('foo')['messages'][0]
     assert err['line'] == 1
     assert err['message'] == "NameError: name 'foo' is not defined"
 
-    err = s.runCode('y = 24\nfoo')['errors'][0]
+    err = s.executeCode('y = 24\nfoo')['messages'][0]
     assert err['line'] == 2
     assert err['message'] == "NameError: name 'foo' is not defined"
 
-    output = s.runCode('plt.plot(range(5))')['output']
-    assert output['type'] == 'image'
-    assert output['format'] == 'src'
-    assert output['content'][:10] == 'data:image'
+    value = s.executeCode('plt.plot(range(5))')['value']
+    assert value['type'] == 'image'
+    assert value['src'][:10] == 'data:image'
 
-
-def test_callCode():
-    s = PythonContext()
-
-    assert s.callCode('') == {'errors': None, 'output': pack(None)}
-
-    assert s.callCode('return 42') == {'errors': None, 'output': pack(42)}
-
-    assert s.callCode('return foo', {'foo': pack('bar')}) == {'errors': None, 'output': pack('bar')}
-
-    result = s.callCode('return foo')
-    output = result['output']
-    assert output is None
-    error = result['errors'][0]
-    assert error['line'] == 2
+    result = s.executeCode('foo')
+    value = result['value']
+    assert value is None
+    error = result['messages'][0]
+    assert error['line'] == 1
     assert "name 'foo' is not defined" in error['message']
 
-    result = s.callCode('a syntax error')
-    output = result['output']
-    assert output is None
-    error = result['errors'][0]
+    result = s.executeCode('a syntax error')
+    value = result['value']
+    assert value is None
+    error = result['messages'][0]
     assert error['line'] == 0
     assert error['message'][:-19] == "SyntaxError: invalid syntax"
