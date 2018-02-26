@@ -4,8 +4,10 @@ Get the version of this package
 Based on http://stackoverflow.com/a/17638236/4625911
 """
 
-from pkg_resources import get_distribution, DistributionNotFound
+# pylint: disable=invalid-name
+
 import os.path
+from pkg_resources import get_distribution, DistributionNotFound
 
 try:
     dist = get_distribution('stencila')

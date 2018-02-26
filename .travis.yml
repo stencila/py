@@ -11,7 +11,8 @@ install:
   - make setup-travis
 
 script:
-  - tox
+  - pylint stencila || true
+  - make test
 
 after_success:
   - |

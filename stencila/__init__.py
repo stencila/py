@@ -1,3 +1,5 @@
+# pylint: skip-file
+
 from .python_context import PythonContext
 from .sqlite_context import SqliteContext
 from .host import Host, host

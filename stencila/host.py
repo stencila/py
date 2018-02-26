@@ -1,3 +1,5 @@
+# pylint: disable=superfluous-parens
+
 import collections
 import datetime
 import json
@@ -31,16 +33,17 @@ TYPES_SPECS = {
 class Host(object):
     """
     A `Host` allows you to create, get, run methods of, and delete instances of various types.
-    The types can be thought of a "services" provided by the host e.g. `NoteContext`, `FilesystemStorer`
+    The types can be thought of a "services" provided by the host e.g. `NoteContext`,
+    `FilesystemStorer`
 
     The API of a host is similar to that of a HTTP server. It's methods names
     (e.g. `post`, `get`) are similar to HTTP methods (e.g. `POST`, `GET`) but
     the sematics sometimes differ (e.g. a host's `put()` method is used to call an
     instance method)
 
-    A `Host` is not limited to beng served by HTTP and it's methods are exposed by both `HostHttpServer`
-    and `HostWebsocketServer`. Those other classes are responsible for tasks associated with
-    their communication protocol (e.g. serialising and deserialising objects).
+    A `Host` is not limited to beng served by HTTP and it's methods are exposed by both
+    `HostHttpServer` and `HostWebsocketServer`. Those other classes are responsible for
+    tasks associated with their communication protocol (e.g. serialising and deserialising objects).
 
     This is a singleton class. There should only ever be one `Host`
     in memory in each process (although, for purposes of testing, this is not enforced)

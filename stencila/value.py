@@ -1,3 +1,9 @@
+"""
+Type and packaing and unpacking of data values
+"""
+
+# pylint: disable=redefined-builtin,too-many-return-statements,too-many-branches,no-member
+
 import base64
 import json
 from io import BytesIO
@@ -87,7 +93,7 @@ def pack(value):
                 values = [float(row) for row in values]
             elif col.dtype in (numpy.str_, numpy.unicode_,):
                 column_type = 'string'
-            elif col.dtype == numpy.object and len(values) > 0:
+            elif col.dtype == numpy.object and values:
                 # Get the type from the type of the first value
                 column_type = {
                     str: 'string'
@@ -146,10 +152,10 @@ def unpack(pkg):
     elif type_ == 'table':
         if format == 'json':
             table = json.loads(data, object_pairs_hook=OrderedDict)
-            df = pandas.DataFrame()
+            dataframe = pandas.DataFrame()
             for name, column in table['data'].items():
-                df[name] = column['values']
-            return df
+                dataframe[name] = column['values']
+            return dataframe
         elif format in ('csv', 'tsv'):
             sep = ',' if format == 'csv' else '\t'
             return pandas.read_csv(BytesIO(data.encode()), sep=sep)
