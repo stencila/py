@@ -11,15 +11,6 @@ def install(*args, **kwargs):  # pragma: no cover
     """
     host.install(*args, **kwargs)
 
-
-def environ():  # pragma: no cover
-    """
-    Display the Stencila host's environment
-    """
-    import json
-    print(json.dumps(host.environ()))
-
-
 def start(*args, **kwargs):  # pragma: no cover
     """
     Start serving the Stencila host

@@ -81,21 +81,6 @@ class Host(object):
         """
         return os.path.join(tempfile.gettempdir(), 'stencila')
 
-    def environ(self):
-        """
-        Get the environment of this host including the version of Node.js and versions
-        of installed packages (local and globals)
-
-        :returns: The environment as a dictionary of dictionaries
-        """
-        # TODO dictionary of loaded package names and versions
-        return {
-            'version': sys.version,
-            'platform': platform.system().lower(),
-            'arch': platform.machine(),
-            'packages': {}
-        }
-
     def manifest(self):
         """
         Get a manifest for this host
