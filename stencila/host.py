@@ -110,9 +110,9 @@ class Host(object):
 
         return manifest
 
-    def install(self):
+    def register(self):
         """
-        Installation of a host involves creating a file `py.json` inside of
+        Registration of a host involves creating a file `py.json` inside of
         the user's Stencila data (see `user_dir()`) directory which describes
         the capabilities of this host.
         """

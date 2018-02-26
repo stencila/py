@@ -5,11 +5,12 @@ from .host_http_server import HostHttpServer
 from .value import type, pack, unpack
 
 
-def install(*args, **kwargs):  # pragma: no cover
+def register(*args, **kwargs):  # pragma: no cover
     """
-    Install the Stencila host
+    Register the Stencila host
     """
-    host.install(*args, **kwargs)
+    host.register(*args, **kwargs)
+
 
 def start(*args, **kwargs):  # pragma: no cover
     """
