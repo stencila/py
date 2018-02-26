@@ -69,7 +69,7 @@ class Host(object):
         if osn == 'darwin':
             return os.path.join(os.getenv("HOME"), 'Library', 'Application Support', 'Stencila')
         elif osn == 'linux':
-            return os.path.join(os.getenv("HOME"), '.local', 'share', 'stencila')
+            return os.path.join(os.getenv("HOME"), '.stencila')
         elif osn == 'windows':
             return os.path.join(os.getenv("APPDATA"), 'Stencila')
         else:
