@@ -69,7 +69,7 @@ class Host(object):
         if osn == 'darwin':
             return os.path.join(os.getenv("HOME"), 'Library', 'Application Support', 'Stencila')
         elif osn == 'linux':
-            return os.path.join(os.getenv("HOME"), '.local', 'share', 'stencila')
+            return os.path.join(os.getenv("HOME"), '.stencila')
         elif osn == 'windows':
             return os.path.join(os.getenv("APPDATA"), 'Stencila')
         else:
@@ -80,21 +80,6 @@ class Host(object):
         Get the current Stencila temporary directory
         """
         return os.path.join(tempfile.gettempdir(), 'stencila')
-
-    def environ(self):
-        """
-        Get the environment of this host including the version of Node.js and versions
-        of installed packages (local and globals)
-
-        :returns: The environment as a dictionary of dictionaries
-        """
-        # TODO dictionary of loaded package names and versions
-        return {
-            'version': sys.version,
-            'platform': platform.system().lower(),
-            'arch': platform.machine(),
-            'packages': {}
-        }
 
     def manifest(self):
         """
@@ -113,27 +98,21 @@ class Host(object):
                 ('version', __version__)
             ])),
             ('run', [sys.executable, '-c', 'import stencila; stencila.run(echo=True)']),
-            ('types', TYPES_SPECS),
-            # For compatability with 0.27 API
-            ('schemes', {
-                'new': TYPES_SPECS
-            })
+            ('types', TYPES_SPECS)
         ])
         if self._started:
             manifest.update([
                 ('id', self._id),
                 ('process', os.getpid()),
                 ('servers', self.servers),
-                ('instances', list(self._instances.keys())),
-                # For compatability with 0.27 API
-                ('urls', self.urls)
+                ('instances', list(self._instances.keys()))
             ])
 
         return manifest
 
-    def install(self):
+    def register(self):
         """
-        Installation of a host involves creating a file `py.json` inside of
+        Registration of a host involves creating a file `py.json` inside of
         the user's Stencila data (see `user_dir()`) directory which describes
         the capabilities of this host.
         """
@@ -300,10 +279,6 @@ class Host(object):
                 'ticket': server.ticket_create()
             }
         return servers
-
-    @property
-    def urls(self):
-        return [server.url for server in self._servers.values()]
 
     def view(self):  # pragma: no cover
         """
