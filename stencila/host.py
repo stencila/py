@@ -98,20 +98,14 @@ class Host(object):
                 ('version', __version__)
             ])),
             ('run', [sys.executable, '-c', 'import stencila; stencila.run(echo=True)']),
-            ('types', TYPES_SPECS),
-            # For compatability with 0.27 API
-            ('schemes', {
-                'new': TYPES_SPECS
-            })
+            ('types', TYPES_SPECS)
         ])
         if self._started:
             manifest.update([
                 ('id', self._id),
                 ('process', os.getpid()),
                 ('servers', self.servers),
-                ('instances', list(self._instances.keys())),
-                # For compatability with 0.27 API
-                ('urls', self.urls)
+                ('instances', list(self._instances.keys()))
             ])
 
         return manifest
@@ -285,10 +279,6 @@ class Host(object):
                 'ticket': server.ticket_create()
             }
         return servers
-
-    @property
-    def urls(self):
-        return [server.url for server in self._servers.values()]
 
     def view(self):  # pragma: no cover
         """
