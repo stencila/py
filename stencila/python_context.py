@@ -12,8 +12,7 @@ import pandas
 
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
+import matplotlib.pyplot as plt  # pylint: disable=import-error
 
 undefined = object()
 
@@ -38,7 +37,7 @@ class PythonContext(object):
         # TODO: return registered function libraries
         return []
 
-    def analyseCode(self, code, exprOnly=False):
+    def compile(self, code, exprOnly=False):
         # TODO: analysis of tree to determine inputs and outputs
         # tree = ast.parse(code, mode='exec')
         inputs = []
@@ -50,7 +49,7 @@ class PythonContext(object):
             'messages': messages
         }
 
-    def executeCode(self, code, inputs={}, exprOnly=False):
+    def execute(self, code, inputs={}, exprOnly=False):
         # Extract names and values of inputs
         names = inputs.keys()
         values = [unpack(package) for package in inputs.values()]
@@ -91,8 +90,7 @@ class PythonContext(object):
 
         return {
             'messages': errors,
-            'value': None if output is undefined else pack(output),
-            'output': None
+            'value': None if output is undefined else pack(output)
         }
 
     def _errors(self):
@@ -130,6 +128,5 @@ class PythonContext(object):
 
 PythonContext.spec = {
     'name': 'PythonContext',
-    'base': 'Context',
-    'aliases': ['py', 'python']
+    'client': 'ContextHttpClient'
 }

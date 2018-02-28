@@ -82,7 +82,7 @@ def test_host_put():
     h = Host()
 
     id = h.post('PythonContext')
-    assert h.put(id, 'executeCode', {'code': '6*7'})['value'], pack(42)
+    assert h.put(id, 'execute', {'code': '6*7'})['value'], pack(42)
 
     with pytest.raises(Exception) as exc:
         h.put(id, 'fooBar')
