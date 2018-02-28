@@ -33,7 +33,7 @@ TYPES_SPECS = {
 class Host(object):
     """
     A `Host` allows you to create, get, run methods of, and delete instances of various types.
-    The types can be thought of a "services" provided by the host e.g. `NoteContext`,
+    The types can be thought of a "services" provided by the host e.g. `PythonContext`,
     `FilesystemStorer`
 
     The API of a host is similar to that of a HTTP server. It's methods names
@@ -41,8 +41,8 @@ class Host(object):
     the sematics sometimes differ (e.g. a host's `put()` method is used to call an
     instance method)
 
-    A `Host` is not limited to beng served by HTTP and it's methods are exposed by both
-    `HostHttpServer` and `HostWebsocketServer`. Those other classes are responsible for
+    A `Host` is not limited to beng served by HTTP and it's methods are exposed by
+    `HostHttpServer`. Those other classes are responsible for
     tasks associated with their communication protocol (e.g. serialising and deserialising objects).
 
     This is a singleton class. There should only ever be one `Host`
@@ -58,6 +58,11 @@ class Host(object):
 
     @property
     def id(self):
+        """
+        Get the identifier of the Host
+
+        :returns: An identification string
+        """
         return self._id
 
     def user_dir(self):
@@ -66,6 +71,8 @@ class Host(object):
 
         This is the directory that Stencila configuration settings, such as the
         installed Stencila hosts, and document buffers get stored.
+
+        :returns: A filesystem path
         """
 
         osn = platform.system().lower()
@@ -80,13 +87,15 @@ class Host(object):
 
     def temp_dir(self):
         """
-        Get the current Stencila temporary directory
+        Get the current Stencila temporary directory.
+
+        :returns: A filesystem path
         """
         return os.path.join(tempfile.gettempdir(), 'stencila')
 
     def manifest(self):
         """
-        Get a manifest for this host
+        Get a manifest for this host.
 
         The manifest describes the host and it's capabilities. It is used
         by peer hosts to determine which "types" this host provides and
@@ -274,6 +283,14 @@ class Host(object):
 
     @property
     def servers(self):
+        """
+        Get a list of servers for this host.
+
+        Currenty, only a `HostHttpServer` is implemented but in the 
+        future onther servers for a host may be added (e.g. `HostWebsocketServer`)
+
+        :returns: A dictionary of server details
+        """
         servers = {}
         for name in self._servers.keys():
             server = self._servers[name]
