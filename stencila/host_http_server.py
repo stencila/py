@@ -16,8 +16,57 @@ from werkzeug.serving import BaseWSGIServer
 
 
 class HostHttpServer(object):
+    """
+    A HTTP server for a Host
 
-    def __init__(self, host, address='127.0.0.1', port=2000, authorization=True):
+    Provides access to a ``Host`` via a REST-like HTTP protocol using ``POST`` to
+    create new instance and ``PUT`` to run one of it's methods. Implements authorization
+    using single-, or multi-, use "tickets" and session tokens.
+
+    The following example illustrates creating a ``PythonContext`` and then
+    running it's ``execute`` method. It uses the ``http`` command line tool (https://httpie.org/)
+    for brevity and session management but you could also use ``curl`` or other
+    HTTP client.
+
+    .. code-block:: bash
+
+        # Start the server
+        > python -m stencila
+        Host has started at: http://127.0.0.1:2000/?ticket=w8Z0ZkuWlz8Y
+        Use Ctrl+C to stop
+
+        # Then in another shell create a new PythonContext (using the above ticket
+        # to obtain access authorization and a session token) using POST
+        > http --session=/tmp/session.json  POST :2000/PythonContext?ticket=w8Z0ZkuWlz8Y
+        HTTP/1.0 200 OK
+        Content-Length: 21
+        Content-Type: application/json
+        Date: Wed, 28 Feb 2018 21:36:37 GMT
+        Server: Werkzeug/0.12.2 Python/2.7.12
+        Set-Cookie: token=PjvskQ38vtuJQg2hNYEHwPppvw8RKbs0AaYcA9uStannZkGfRr3I0g9jyeQD3L3f; Path=/
+
+        "pythonContext1"
+
+        # Then use the returned identifer of the PythonContext to run the "execute" method
+        # of the context using PUT
+        > http --session=/tmp/session.json  PUT :2000/pythonContext1!execute code='sys.version'
+        HTTP/1.0 200 OK
+        Content-Length: 153
+        Content-Type: application/json
+        Date: Wed, 28 Feb 2018 21:39:54 GMT
+        Server: Werkzeug/0.12.2 Python/2.7.12
+
+        {
+            "messages": [],
+            "value": {
+                "data": "2.7.12 (default, Nov 20 2017, 18:23:56) [GCC 5.4.0 20160609]",
+                "type": "string"
+            }
+        }
+
+    """
+
+    def __init__(self, host, address='127.0.0.1', port=2000, authorization=True, tickets_reuse=True):
         self._host = host
         self._address = address
         self._port = port
@@ -31,12 +80,15 @@ class HostHttpServer(object):
 
         self._server = None
         self._tickets = []
+        self._tickets_reuse = tickets_reuse
         self._tokens = []
 
     @property
     def url(self):
         """
-        Get the URL for this server
+        Get the URL of the server
+
+        :returns: A URL string
         """
         return 'http://%s:%s' % (self._address, self._port) if self._server else None
 
@@ -214,9 +266,15 @@ class HostHttpServer(object):
         return None
 
     def options(self, request):
+        """
+        Handle a OPTIONS request
+        """
         return Response()
 
     def home(self, request):
+        """
+        Handle a GET request to the root path /
+        """
         if 'application/json' in request.headers.get('accept', ''):
             return Response(
                 to_json(self._host.manifest()),
@@ -226,6 +284,9 @@ class HostHttpServer(object):
             return self.static(request, 'index.html')
 
     def static(self, request, path):
+        """
+        Handle a GET request for a static file
+        """
         static_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
         requested_path = os.path.abspath(os.path.join(static_path, path))
         if os.path.commonprefix([static_path, requested_path]) != static_path:
@@ -239,6 +300,9 @@ class HostHttpServer(object):
             )
 
     def post(self, request, type):
+        """
+        Handle a POST request
+        """
         kwargs = json.loads(request.data.decode()) if request.data else {}
         if 'name' in kwargs:
             name = kwargs.get('name')
@@ -251,12 +315,18 @@ class HostHttpServer(object):
         )
 
     def get(self, request, id):
+        """
+        Handle a GET request
+        """
         return Response(
             to_json(self._host.get(id)),
             mimetype='application/json'
         )
 
     def put(self, request, id, method):
+        """
+        Handle a PUT request
+        """
         kwargs = json.loads(request.data.decode()) if request.data else {}
         return Response(
             to_json(self._host.put(id, method, kwargs)),
@@ -264,6 +334,9 @@ class HostHttpServer(object):
         )
 
     def delete(self, request, id):
+        """
+        Handle a DELETE request
+        """
         self._host.delete(id)
 
         return Response(
@@ -273,7 +346,7 @@ class HostHttpServer(object):
 
     def ticket_create(self):
         """
-        Create a ticket (a single-use access token)
+        Create a ticket (an access token)
         """
         ticket = ''.join(random.choice(
             string.ascii_lowercase + string.ascii_uppercase + string.digits
@@ -284,12 +357,13 @@ class HostHttpServer(object):
     def ticket_check(self, ticket):
         """
         Check that a ticket is valid.
-        *
-        If it is, then it is removed from the list of tickets
-        and `true` is returned. Otherwise, returns `false`
+
+        If it is, and ``tickets_reuse = False```, then it is removed from
+        the list of valid tickets
         """
         if ticket in self._tickets:
-            self._tickets.remove(ticket)
+            if not self._tickets_reuse:
+                self._tickets.remove(ticket)
             return True
         else:
             return False
@@ -322,6 +396,9 @@ class HostHttpServer(object):
 
 
 class JSONEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for Python object
+    """
 
     def default(self, object):
         try:
