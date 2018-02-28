@@ -47,8 +47,8 @@ class HostHttpServer(object):
 
         "pythonContext1"
 
-        # Then use the returned identifer of the PythonContext to run the "execute" method
-        # of the context using PUT
+        # Then use the returned name of the PythonContext instance to run it's "execute" method
+        # using PUT
         > http --session=/tmp/session.json  PUT :2000/pythonContext1!execute code='sys.version'
         HTTP/1.0 200 OK
         Content-Length: 153
@@ -304,40 +304,35 @@ class HostHttpServer(object):
         Handle a POST request
         """
         kwargs = json.loads(request.data.decode()) if request.data else {}
-        if 'name' in kwargs:
-            name = kwargs.get('name')
-            del kwargs['name']
-        else:
-            name = None
         return Response(
-            to_json(self._host.post(type, name, kwargs)),
+            to_json(self._host.post(type, kwargs)),
             mimetype='application/json'
         )
 
-    def get(self, request, id):
+    def get(self, request, name):
         """
         Handle a GET request
         """
         return Response(
-            to_json(self._host.get(id)),
+            to_json(self._host.get(name)),
             mimetype='application/json'
         )
 
-    def put(self, request, id, method):
+    def put(self, request, name, method):
         """
         Handle a PUT request
         """
         kwargs = json.loads(request.data.decode()) if request.data else {}
         return Response(
-            to_json(self._host.put(id, method, kwargs)),
+            to_json(self._host.put(name, method, kwargs)),
             mimetype='application/json'
         )
 
-    def delete(self, request, id):
+    def delete(self, request, name):
         """
         Handle a DELETE request
         """
-        self._host.delete(id)
+        self._host.delete(name)
 
         return Response(
             '',

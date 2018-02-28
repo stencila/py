@@ -55,6 +55,7 @@ class Host(object):
         self._started = None
         self._heartbeat = None
         self._instances = {}
+        self._counts = {}
 
     @property
     def id(self):
@@ -134,49 +135,51 @@ class Host(object):
         with open(os.path.join(dir, 'py.json'), 'w') as file:
             file.write(json.dumps(self.manifest(), indent=True))
 
-    def post(self, type, name=None, options={}):
+    def post(self, type, args={}):
         """
         Create a new instance of a type
 
         :param type: Type of instance
-        :param name: Name of new instance
-        :param options: Additional arguments to pass to constructor
-        :returns: Address of newly created instance
+        :param args: Arguments to be passed to type constructor
+        :returns: Name of newly created instance
         """
         Class = TYPES.get(type)
         if Class:
-            instance = Class(**options)
-            if not name:
-                name = ''.join(random.choice(string.ascii_lowercase + string.digits) for char in range(12))
-            address = 'name://' + name
-            self._instances[address] = instance
-            return address
+            instance = Class(**args)
+            try:
+                self._counts[type] += 1
+            except KeyError:
+                self._counts[type] = 1
+            number = self._counts[type]
+            name = '%s%s%d' % (type[:1].lower(), type[1:], number)
+            self._instances[name] = instance
+            return name
         else:
             raise Exception('Unknown type: %s' % type)
 
-    def get(self, id):
+    def get(self, name):
         """
         Get an instance
 
-        :param id: ID of instance
+        :param name: Name of instance
         :returns: The instance
         """
-        instance = self._instances.get(id)
+        instance = self._instances.get(name)
         if instance:
             return instance
         else:
-            raise Exception('Unknown instance: %s' % id)
+            raise Exception('Unknown instance: %s' % name)
 
-    def put(self, id, method, kwargs={}):
+    def put(self, name, method, kwargs={}):
         """
         Call a method of an instance
 
-        :param id: ID of instance
+        :param name: Name of instance
         :param method: Name of instance method
         :param kwargs: A dictionary of method arguments
         :returns: Result of method call
         """
-        instance = self._instances.get(id)
+        instance = self._instances.get(name)
         if instance:
             try:
                 func = getattr(instance, method)
@@ -185,18 +188,18 @@ class Host(object):
             else:
                 return func(**kwargs)
         else:
-            raise Exception('Unknown instance: %s' % id)
+            raise Exception('Unknown instance: %s' % name)
 
-    def delete(self, id):
+    def delete(self, name):
         """
         Delete an instance
 
-        :param id: ID of instance
+        :param name: Name of instance
         """
-        if id in self._instances:
-            del self._instances[id]
+        if name in self._instances:
+            del self._instances[name]
         else:
-            raise Exception('Unknown instance: %s' % id)
+            raise Exception('Unknown instance: %s' % name)
 
     def start(self, address='127.0.0.1', port=2000, authorization=True, quiet=False):
         """
