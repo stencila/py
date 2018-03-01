@@ -10,13 +10,13 @@
 
 This package isn't on PyPI yet, but you can install it this repository using using pip:
 
-```sh
+```bash
 pip install --user https://github.com/stencila/py/archive/master.zip
 ```
 
 Then install the package so that other Stencila packages and applications can detect it:
 
-```sh
+```bash
 python -c "import stencila; stencila.install()"
 ```
 
@@ -51,7 +51,7 @@ To get started, please read our contributor [code of conduct](CONDUCT.md), then 
 During development a its handy to have `pytest` installed and run individual test file from the root directory like this:
 
 ```
-python -m pytest tests/test_component.py
+python -m pytest tests/test_python_context.py
 ```
 
 Or run all the tests:

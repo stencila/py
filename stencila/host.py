@@ -15,14 +15,13 @@ import time
 
 from .version import __version__
 from .python_context import PythonContext
-# from .sqlite_context import SqliteContext
+from .sqlite_context import SqliteContext
 from .host_http_server import HostHttpServer
 
 # Resource types available
 TYPES = {
     'PythonContext': PythonContext,
-    # Temporarily disable this SqliteContext which does not support new API
-    # 'SqliteContext': SqliteContext
+    'SqliteContext': SqliteContext
 }
 # Resource types specifications
 TYPES_SPECS = {
@@ -145,13 +144,17 @@ class Host(object):
         """
         Class = TYPES.get(type)
         if Class:
-            instance = Class(**args)
             try:
                 self._counts[type] += 1
             except KeyError:
                 self._counts[type] = 1
             number = self._counts[type]
             name = '%s%s%d' % (type[:1].lower(), type[1:], number)
+
+            args['host'] = self
+            args['name'] = name
+            instance = Class(**args)
+
             self._instances[name] = instance
             return name
         else:
@@ -289,7 +292,7 @@ class Host(object):
         """
         Get a list of servers for this host.
 
-        Currenty, only a `HostHttpServer` is implemented but in the 
+        Currenty, only a `HostHttpServer` is implemented but in the
         future onther servers for a host may be added (e.g. `HostWebsocketServer`)
 
         :returns: A dictionary of server details

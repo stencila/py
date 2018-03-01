@@ -14,15 +14,18 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt  # pylint: disable=import-error
 
+from .context import Context
+
 undefined = object()
 
 
-class PythonContext(object):
+class PythonContext(Context):
 
-    def __init__(self, dir=None):
-        self._dir = dir
-        if dir:
-            os.chdir(dir)
+    def __init__(self, *args, **kwargs):
+        Context.__init__(self, *args, **kwargs)
+
+        if self._dir:
+            os.chdir(self._dir)
 
         self._global_scope = {
             'numpy': numpy,
@@ -37,19 +40,19 @@ class PythonContext(object):
         # TODO: return registered function libraries
         return []
 
-    def compile(self, code, exprOnly=False):
+    def compile(self, code):
         # TODO: analysis of tree to determine inputs and outputs
         # tree = ast.parse(code, mode='exec')
         inputs = []
-        outputs = []
+        output = None
         messages = []
         return {
             'inputs': inputs,
-            'outputs': outputs,
+            'output': output,
             'messages': messages
         }
 
-    def execute(self, code, inputs={}, exprOnly=False):
+    def execute(self, code, inputs={}):
         # Extract names and values of inputs
         names = inputs.keys()
         values = [unpack(package) for package in inputs.values()]
