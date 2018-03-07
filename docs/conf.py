@@ -33,6 +33,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
+    'sphinxcontrib.napoleon'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -53,7 +54,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Stencila for Python'
-copyright = u'2016-2017, Nokome Bentley'
+copyright = u'2016-2018, Stencila contributors'
 author = u'Nokome Bentley'
 
 # The version info for the project you're documenting, acts as replacement for

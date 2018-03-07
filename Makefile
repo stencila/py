@@ -1,6 +1,6 @@
 all: setup build
 
-SETUP_PACKAGES := setuptools wheel tox twine sphinx sphinx-autobuild sphinx_rtd_theme pylint
+SETUP_PACKAGES := setuptools wheel tox twine sphinx sphinx-autobuild sphinx_rtd_theme sphinxcontrib-napoleon pylint
 
 # A local user install is generally recommended
 setup:
