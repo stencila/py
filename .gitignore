@@ -10,3 +10,4 @@
 /.coverage
 /coverage.xml
 /.cache
+/.pytest_cache
