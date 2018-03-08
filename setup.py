@@ -28,6 +28,7 @@ setup(
         'numpy',
         'pandas',
         'six',
+        'sphinxcontrib-napoleon',
         'werkzeug'
     ]
 )
