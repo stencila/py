@@ -51,6 +51,8 @@ class Context(object):
             return 'object'
         elif isinstance(value, pandas.DataFrame):
             return 'table'
+        elif callable(value):
+            return 'function'
         else:
             raise RuntimeError('Unable to pack object\n  type: ' + type_)
 

@@ -1,6 +1,7 @@
 import ast
 import imp
 import inspect
+import glob
 import os
 import re
 from six import exec_
@@ -31,6 +32,8 @@ class PythonContext(Context):
         if self._dir:
             os.chdir(self._dir)
 
+        self._scope = {}
+
         self._global_scope = {
             'numpy': numpy,
             'np': numpy,
@@ -43,6 +46,13 @@ class PythonContext(Context):
     def getLibraries(self):
         # TODO: return registered function libraries
         return []
+
+    def list(self, types=[]):
+        names = []
+        for name, obj in self._scope.items():
+            if not len(types) or self.type(obj) in types:
+                names.append(name)
+        return names
 
     def compile(self, operation):
         """
@@ -86,7 +96,7 @@ class PythonContext(Context):
         cell['outputs'] = outputs
         return cell, messages
 
-    def compile_func(self, func):
+    def compile_func(self, func=None, file=None, dir=None):
         """
         Compile a ``func`` operation
 
@@ -125,7 +135,23 @@ class PythonContext(Context):
         """
         messages = []
 
-        if callable(func):
+        if func is None:
+            if file:
+                with open(file) as file_obj:
+                    func, messages = self.compile_func({
+                        'type': 'func',
+                        'source': file_obj.read()
+                    })
+                return func, messages
+            elif dir:
+                count  =0
+                for file in glob.glob(dir + '/*.py'):
+                    self.compile_func(file=file)
+                    count += 1
+                return count
+            else:
+                raise RuntimeError('No function provided to compile!')
+        elif callable(func):
             func_obj = func
             func = {
                 'type': 'func',
@@ -142,11 +168,6 @@ class PythonContext(Context):
 
             # Obtain source code
             source = func.get('source')
-            if not source:
-                file = func.get('file')
-                if file:
-                    with open(file) as f:
-                        source = f.read()
             if not source:
                 raise RuntimeError('Not function source code specified in `source` or `file` properties')
 
@@ -244,6 +265,10 @@ class PythonContext(Context):
             'name': func_name,
             'params': params
         })
+
+        # Register the function in scope
+        self._scope[func_name] = func_obj
+
         return func, messages
 
     def execute(self, code, inputs={}):

@@ -1,3 +1,5 @@
+import os
+
 from stencila.python_context import PythonContext
 from stencila.value import pack
 
@@ -12,6 +14,8 @@ def test_compile_func():
     context = PythonContext()
 
     # Test general interface
+
+    assert context.list(types=['function']) == []
 
     # .. can be called with a function operation
     operation, messages = context.compile_func({
@@ -37,6 +41,23 @@ def test_compile_func():
     # ...or a function object
     def hello(who="world"): return "Hello"
     assert context.compile_func(hello)[0] == operation
+    assert context.list(types=['function']) == ['hello']
+
+    # ...or a file
+    path = os.path.join(os.path.dirname(__file__), 'fixtures', 'funcs', 'hello.py')
+    operation, messages = context.compile_func(file=path)
+    assert operation == {
+        'type': 'func',
+        'name': 'hello',
+        'params': [],
+        'source': 'def hello():\n    return "Hello from %s" % __file__\n'
+    }
+
+    # ...or a directory
+    path = os.path.join(os.path.dirname(__file__), 'fixtures', 'funcs')
+    count = context.compile_func(dir=path)
+    assert count == 2
+    assert context.list(types=['function']).sort() == ['goodbye', 'hello'].sort()
 
     # Test handling of errors in function source
 
