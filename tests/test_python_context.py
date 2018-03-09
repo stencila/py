@@ -13,6 +13,7 @@ def test_compile_func():
 
     # Test general interface
 
+    # .. can be called with a function operation
     operation, messages = context.compile_func({
         'type': 'func',
         'source': 'def hello(who="world"): return "Hello"'
@@ -27,6 +28,15 @@ def test_compile_func():
             'default': {'type': 'string', 'data': 'world'}
         }]
     }
+
+    # ...or a string
+    assert context.compile_func(
+        'def hello(who="world"): return "Hello"'
+    )[0] == operation
+
+    # ...or a function object
+    def hello(who="world"): return "Hello"
+    assert context.compile_func(hello)[0] == operation
 
     # Test handling of errors in function source
 

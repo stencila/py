@@ -125,36 +125,44 @@ class PythonContext(Context):
         """
         messages = []
 
-        # If necessary, wrap string arguments into an operation dict
-        if isinstance(func, str) or isinstance(func, bytes):
+        if callable(func):
+            func_obj = func
             func = {
                 'type': 'func',
-                'source': func
+                'source': '\n'.join(inspect.getsourcelines(func_obj)[0]).strip()
             }
+            func_name = func_obj.__code__.co_name
+        else:
+            # If necessary, wrap string arguments into an operation dict
+            if isinstance(func, str) or isinstance(func, bytes):
+                func = {
+                    'type': 'func',
+                    'source': func
+                }
 
-        # Obtain source code
-        source = func.get('source')
-        if not source:
-            file = func.get('file')
-            if file:
-                with open(file) as f:
-                    source = f.read()
-        if not source:
-            raise RuntimeError('Not function source code specified in `source` or `file` properties')
+            # Obtain source code
+            source = func.get('source')
+            if not source:
+                file = func.get('file')
+                if file:
+                    with open(file) as f:
+                        source = f.read()
+            if not source:
+                raise RuntimeError('Not function source code specified in `source` or `file` properties')
 
-        # Parse function source and extract properties from the Function object
-        scope = {}
-        exec_(source, scope)
+            # Parse function source and extract properties from the Function object
+            scope = {}
+            exec_(source, scope)
 
-        # Get name of function
-        names = [key for key in scope.keys() if not key.startswith('__')]
-        if len(names) > 1:
-            messages.append({
-                'type': 'warning',
-                'message': 'More than one function or object defining in function source: %s' % names
-            })
-        func_name = names[-1]
-        func_obj = scope[func_name]
+            # Get name of function
+            names = [key for key in scope.keys() if not key.startswith('__')]
+            if len(names) > 1:
+                messages.append({
+                    'type': 'warning',
+                    'message': 'More than one function or object defining in function source: %s' % names
+                })
+            func_name = names[-1]
+            func_obj = scope[func_name]
 
         # Extract parameter specifications
         func_spec = inspect.getargspec(func_obj)
