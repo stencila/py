@@ -348,6 +348,19 @@ class PythonContext(Context):
             'message': exc_type.__name__ + ': ' + traceback._some_str(exc_value)
         }]
 
+    # Legacy methods
+
+    def analyseCode(self, code, *args, **kwargs):
+        # TODO call self.compile
+        return {
+            'intputs': [],
+            'output': None
+        }
+
+    def executeCode(self, *args, **kwargs):
+        return self.execute(*args, **kwargs)
+
+
 PythonContext.spec = {
     'name': 'PythonContext',
     'client': 'ContextHttpClient'
