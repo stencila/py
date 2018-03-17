@@ -282,7 +282,7 @@ class Host(object):
 
         while True:
             try:
-                time.sleep(0x7FFFFFFF)
+                time.sleep(1000)
             except KeyboardInterrupt:
                 self.stop()
                 break
