@@ -205,7 +205,8 @@ class HostHttpServer(object):
             match = re.match(r'^https?://([\w.]+)(:\d+)?', origin)
             if match:
                 host = match.group(1)
-                if host not in ('127.0.0.1', 'localhost', 'open.stenci.la'):
+                match = re.match(r'^((127\.0\.0\.1)|(localhost)|(([^.]+\.)?stenci\.la))$', host)
+                if not match:
                     origin = None
             else:
                 origin = None
@@ -268,6 +269,8 @@ class HostHttpServer(object):
     def options(self, request):
         """
         Handle a OPTIONS request
+
+        Necessary for preflighted CORS requests (https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Preflighted_requests)
         """
         return Response()
 
