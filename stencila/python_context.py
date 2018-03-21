@@ -350,15 +350,15 @@ class PythonContext(Context):
 
     # Legacy methods
 
-    def analyseCode(self, code, *args, **kwargs):
+    def analyseCode(self, code, exprOnly=False):
         # TODO call self.compile
         return {
             'intputs': [],
             'output': None
         }
 
-    def executeCode(self, *args, **kwargs):
-        return self.execute(*args, **kwargs)
+    def executeCode(self, code, inputs={}, exprOnly=False):
+        return self.execute(code, inputs)
 
 
 PythonContext.spec = {
