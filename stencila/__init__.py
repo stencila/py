@@ -33,3 +33,10 @@ def run(*args, **kwargs):  # pragma: no cover
     Start serving the Stencila host
     """
     host.run(*args, **kwargs)
+
+
+def spawn(*args, **kwargs):  # pragma: no cover
+    """
+    Spawn the Stencila host
+    """
+    host.spawn(*args, **kwargs)

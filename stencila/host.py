@@ -14,18 +14,15 @@ import tempfile
 import time
 
 from .version import __version__
-from .python_context import PythonContext
-from .sqlite_context import SqliteContext
 from .host_http_server import HostHttpServer
 
-# Resource types available
+from .python_context import PythonContext
+from .sqlite_context import SqliteContext
+
+# Types of execution contexts provided by this Host
 TYPES = {
     'PythonContext': PythonContext,
     'SqliteContext': SqliteContext
-}
-# Resource types specifications
-TYPES_SPECS = {
-    name: clas.spec for (name, clas) in TYPES.items()
 }
 
 
@@ -93,6 +90,9 @@ class Host(object):
         """
         return os.path.join(tempfile.gettempdir(), 'stencila')
 
+    def types(self):
+        return { name: clas.spec for (name, clas) in TYPES.items() }
+
     def manifest(self):
         """
         Get a manifest for this host.
@@ -109,8 +109,8 @@ class Host(object):
                 ('package', 'py'),
                 ('version', __version__)
             ])),
-            ('run', [sys.executable, '-c', 'import stencila; stencila.run(echo=True)']),
-            ('types', TYPES_SPECS)
+            ('spawn', [sys.executable, '-m', 'stencila', 'spawn']),
+            ('types', self.types())
         ])
         if self._started:
             manifest.update([
