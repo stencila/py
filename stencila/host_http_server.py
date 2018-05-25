@@ -71,7 +71,7 @@ class HostHttpServer(object):
         self._address = address
         self._port = port
 
-        auth = os.environ.get('STENCILA_AUTHORIZATION')
+        auth = os.environ.get('STENCILA_AUTH')
         if auth == 'true':
             authorization = True
         elif auth == 'false':
@@ -245,11 +245,17 @@ class HostHttpServer(object):
             return (self.options,)
 
         if path == '/':
-            return (self.home,)
-        if path == '/favicon.ico':
-            return (self.static, 'favicon.ico')
+            return (self.static, 'index.html')
         if path[:8] == '/static/':
             return (self.static, path[8:])
+        if path == '/manifest':
+            return (self.run, 'manifest')
+
+        if path[:9] == '/environ/':
+            if verb == 'POST':
+                return (self.run, 'startup', path[9:])
+            if verb == 'DELETE':
+                return (self.run, 'shutdown', path[9:])
 
         match = re.match(r'^/(.+?)(!(.+))?$', path)
         if match:
@@ -274,18 +280,6 @@ class HostHttpServer(object):
         """
         return Response()
 
-    def home(self, request):
-        """
-        Handle a GET request to the root path /
-        """
-        if 'application/json' in request.headers.get('accept', ''):
-            return Response(
-                to_json(self._host.manifest()),
-                mimetype='application/json'
-            )
-        else:
-            return self.static(request, 'index.html')
-
     def static(self, request, path):
         """
         Handle a GET request for a static file
@@ -301,6 +295,17 @@ class HostHttpServer(object):
                 open(requested_path).read(),
                 mimetype=mimetypes.guess_type(path)[0]
             )
+
+    def run(self, request, method, *args):
+        """
+        Run a host method
+        """
+        if request.data:
+            arg = json.loads(request.data.decode())
+            args.push(arg)
+        result = getattr(self._host, method)(*args)
+        json = to_json(result)
+        return Response(json, mimetype='application/json')
 
     def post(self, request, type):
         """

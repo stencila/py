@@ -1,17 +1,18 @@
 # pylint: disable=superfluous-parens
 
+import binascii
 import collections
 import datetime
 import json
 import os
 import platform
-import random
 import signal
-import string
+import stat
 import subprocess
 import sys
 import tempfile
 import time
+import uuid
 
 from .version import __version__
 from .host_http_server import HostHttpServer
@@ -46,7 +47,8 @@ class Host(object):
     """
 
     def __init__(self):
-        self._id = 'py-' + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(64))
+        self._id = 'py-host-%s' % uuid.uuid4()
+        self._key = binascii.hexlify(os.urandom(64)).decode()
         self._servers = {}
         self._started = None
         self._heartbeat = None
@@ -61,6 +63,15 @@ class Host(object):
         :returns: An identification string
         """
         return self._id
+
+    @property
+    def key(self):
+        """
+        Get the seurity key for this Host
+
+        :returns: A key string
+        """
+        return self._key
 
     def user_dir(self):
         """
@@ -90,6 +101,15 @@ class Host(object):
         """
         return os.path.join(tempfile.gettempdir(), 'stencila')
 
+    def environs(self):
+        return [
+            {
+                "id": "local",
+                "name": "local",
+                "version": None
+            }
+        ]
+
     def types(self):
         return { name: clas.spec for (name, clas) in TYPES.items() }
 
@@ -110,6 +130,7 @@ class Host(object):
                 ('version', __version__)
             ])),
             ('spawn', [sys.executable, '-m', 'stencila', 'spawn']),
+            ('environs', self.environs()),
             ('types', self.types())
         ])
         if self._started:
@@ -133,6 +154,12 @@ class Host(object):
             os.makedirs(dir)
         with open(os.path.join(dir, 'py.json'), 'w') as file:
             file.write(json.dumps(self.manifest(), indent=True))
+
+    def startup(self, environ):
+        return [{"path": "/"}]
+
+    def shutdown(self, host):
+        return True
 
     def post(self, type, args={}):
         """
@@ -173,7 +200,7 @@ class Host(object):
         else:
             raise Exception('Unknown instance: %s' % name)
 
-    def put(self, name, method, kwargs={}):
+    def put(self, name, method, arg):
         """
         Call a method of an instance
 
@@ -189,7 +216,7 @@ class Host(object):
             except AttributeError:
                 raise Exception('Unknown method: %s' % method)
             else:
-                return func(**kwargs)
+                return func(arg)
         else:
             raise Exception('Unknown instance: %s' % name)
 
@@ -227,8 +254,31 @@ class Host(object):
             dir = os.path.join(self.temp_dir(), 'hosts')
             if not os.path.exists(dir):
                 os.makedirs(dir)
-            with open(os.path.join(dir, self.id + '.json'), 'w', 0o600) as file:
-                file.write(json.dumps(self.manifest(), indent=True))
+
+            # Write content to a secure file only readable by current user
+            # Based on https://stackoverflow.com/a/15015748/4625911
+            def write_secure(filename, content):
+                path = os.path.join(dir, filename)
+
+                # Remove any existing file with potentially elevated mode
+                if os.path.isfile(path):
+                    os.remove(path)
+
+                # Create a file handle
+                mode = stat.S_IRUSR | stat.S_IWUSR  # This is 0o600 in octal.
+                umask = 0o777 ^ mode  # Prevents always downgrading umask to 0.
+                umask_original = os.umask(0o177)  # 0o777 ^ 0o600
+                try:
+                    handle = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                finally:
+                    os.umask(umask_original)
+
+                # Open file handle and write to file
+                with os.fdopen(handle, 'w') as file:
+                    file.write(content)
+
+            write_secure(self.id + '.json', json.dumps(self.manifest(), indent=True))
+            write_secure(self.id + '.key', self.key)
 
             if not quiet:
                 urls = [s.ticketed_url() for s in self._servers.values()]
@@ -248,9 +298,10 @@ class Host(object):
             del self._servers['http']
 
         # Deregister as a running host
-        path = os.path.join(self.temp_dir(), 'hosts', self.id + '.json')
-        if os.path.exists(path):
-            os.remove(path)
+        for filename in [self.id + '.json', self.id + '.key']:
+            path = os.path.join(self.temp_dir(), 'hosts', filename)
+            if os.path.exists(path):
+                os.remove(path)
 
         if not quiet:
             print('Host has stopped')
@@ -267,7 +318,11 @@ class Host(object):
         self.start(address=address, port=port, authorization=authorization, quiet=quiet)
 
         if echo:
-            print(json.dumps(self.manifest(), indent=True))
+            print(json.dumps({
+                "id": self.id,
+                "key": self.key,
+                "manifest": self.manifest()
+            }, indent=True))
             sys.stdout.flush()
 
         if not quiet:
@@ -286,6 +341,9 @@ class Host(object):
             except KeyboardInterrupt:
                 self.stop()
                 break
+
+    def spawn(self):
+        self.run(quiet=True, echo=True)
 
     @property
     def servers(self):

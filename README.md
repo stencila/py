@@ -16,6 +16,13 @@ pip install --user https://github.com/stencila/py/archive/master.zip
 
 Then install the package so that other Stencila packages and applications can detect it:
 
+
+```bash
+python -m stencila register"
+```
+
+or, for older versions of Python you may need to do:
+
 ```bash
 python -c "import stencila; stencila.register()"
 ```
