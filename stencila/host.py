@@ -136,7 +136,7 @@ class Host(object):
         if self._started:
             manifest.update([
                 ('id', self._id),
-                ('process', os.getpid()),
+                ('process', {'pid': os.getpid()}),
                 ('servers', self.servers),
                 ('instances', list(self._instances.keys()))
             ])
@@ -281,8 +281,7 @@ class Host(object):
             write_secure(self.id + '.key', self.key)
 
             if not quiet:
-                urls = [s.ticketed_url() for s in self._servers.values()]
-                print('Host has started at: %s' % ', '.join(urls))
+                print('Host has started at: %s' % self._servers['http'].url)
 
         return self
 
@@ -359,8 +358,7 @@ class Host(object):
         for name in self._servers.keys():
             server = self._servers[name]
             servers[name] = {
-                'url': server.url,
-                'ticket': server.ticket_create()
+                'url': server.url
             }
         return servers
 

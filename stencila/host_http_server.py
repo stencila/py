@@ -66,7 +66,7 @@ class HostHttpServer(object):
 
     """
 
-    def __init__(self, host, address='127.0.0.1', port=2000, authorization=True, tickets_reuse=True):
+    def __init__(self, host, address='127.0.0.1', port=2000, authorization=True):
         self._host = host
         self._address = address
         self._port = port
@@ -79,9 +79,6 @@ class HostHttpServer(object):
         self._authorization = authorization
 
         self._server = None
-        self._tickets = []
-        self._tickets_reuse = tickets_reuse
-        self._tokens = []
 
     @property
     def url(self):
@@ -154,24 +151,6 @@ class HostHttpServer(object):
         """
         Handle a HTTP request
         """
-        # Check authorization. Note that browsers do not send credentials (e.g. cookies)
-        # in OPTIONS requests
-        cookie = None
-        if self._authorization and request.method != 'OPTIONS':
-            # Check for ticket
-            ticket = request.args.get('ticket')
-            if ticket:
-                # Check ticket is valid
-                if not self.ticket_check(ticket):
-                    return Response(status=403)
-                else:
-                    # Set token cookie
-                    cookie = 'token=%s; Path=/' % self.token_create()
-            else:
-                # Check for token
-                token = request.cookies.get('token')
-                if not token or not self.token_check(token):
-                    return Response(status=403)
 
         # Route request to a method
         method_args = self.route(request.method, request.path)
@@ -230,10 +209,6 @@ class HostHttpServer(object):
                 # "how long the response to the preflight request can be cached for without
                 # sending another preflight request"
                 response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
-
-        # Set cookie header if necessary
-        if cookie:
-            response.headers['Set-Cookie'] = cookie
 
         return response
 
@@ -346,56 +321,6 @@ class HostHttpServer(object):
             '',
             mimetype='application/json'
         )
-
-    def ticket_create(self):
-        """
-        Create a ticket (an access token)
-        """
-        ticket = ''.join(random.choice(
-            string.ascii_lowercase + string.ascii_uppercase + string.digits
-        ) for _ in range(12))
-        self._tickets.append(ticket)
-        return ticket
-
-    def ticket_check(self, ticket):
-        """
-        Check that a ticket is valid.
-
-        If it is, and ``tickets_reuse = False```, then it is removed from
-        the list of valid tickets
-        """
-        if ticket in self._tickets:
-            if not self._tickets_reuse:
-                self._tickets.remove(ticket)
-            return True
-        else:
-            return False
-
-    def ticketed_url(self):
-        """
-        Create a URL with a ticket query parameter so users
-        can connect to this server
-        """
-        url = self.url
-        if self._authorization:
-            url += '/?ticket=' + self.ticket_create()
-        return url
-
-    def token_create(self):
-        """
-        Create a token (a multiple-use access token)
-        """
-        token = ''.join(random.choice(
-            string.ascii_lowercase + string.ascii_uppercase + string.digits
-        ) for _ in range(64))
-        self._tokens.append(token)
-        return token
-
-    def token_check(self, token):
-        """
-        Check that a token is valid.
-        """
-        return token in self._tokens
 
 
 class JSONEncoder(json.JSONEncoder):
