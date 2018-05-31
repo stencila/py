@@ -115,3 +115,23 @@ def test_host_start_stop():
     h.stop()
     assert len(h.servers) == 0
     assert len(h.manifest()['servers']) == 0
+
+
+def test_generate_token_authorize_token():
+    host = Host()
+
+    token1 = host.generate_token()
+    host.authorize_token(token1)
+
+    token2 = host.generate_token()
+    host.authorize_token(token2)
+
+    assert token1 != token2
+
+    with pytest.raises(Exception) as exc:
+        host.authorize_token("not a valid token")
+    exc.match('Not enough segments')
+
+    with pytest.raises(Exception) as exc:
+        host.authorize_token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MjY5NjA1Nzl9.pgTAtdDGHZZd05hg-Tmy8Cl_yrWBzBSZMaCTkbztc1E")
+    exc.match('Signature verification failed')

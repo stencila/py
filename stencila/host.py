@@ -5,6 +5,7 @@ import binascii
 import collections
 import datetime
 import json
+import jwt
 import os
 import platform
 import signal
@@ -361,6 +362,41 @@ class Host(object):
                 'url': server.url
             }
         return servers
+
+    def generate_token(self, host=None):
+        """
+        Generate a request token.
+
+        :returns: A JWT token string
+        """
+        if host is None:
+            key = self.key
+        else:
+            # TODO Support token generation for peers based on held keys
+            raise RuntimeError('Generation of tokens for peer hosts is not yet supported')
+
+        now = datetime.datetime.utcnow()
+        payload = {
+            'iat': now,
+            'exp': now + datetime.timedelta(seconds=300),
+            'iss': self.id,
+            'jit': binascii.hexlify(os.urandom(32)).decode()
+        }
+        return jwt.encode(payload, key, algorithm='HS256')
+
+    def authorize_token(self, token):
+        """
+        Authorize a request token.
+
+        Throws an error if the token is invalid.
+
+        :param token: A JWT token string
+        """
+        payload = jwt.decode(token, self.key, algorithms=['HS256'])
+
+        # TODO Check and store `iss` and `jti` to prevent replay attacks
+
+        return payload
 
     def view(self):  # pragma: no cover
         """

@@ -27,6 +27,7 @@ setup(
         'matplotlib',
         'numpy',
         'pandas',
+        'PyJWT',
         'six',
         'sphinxcontrib-napoleon',
         'werkzeug'
