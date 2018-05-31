@@ -1,5 +1,6 @@
 # pylint: disable=superfluous-parens
 
+import atexit
 import binascii
 import collections
 import datetime
@@ -125,6 +126,7 @@ class Host(object):
         """
         od = collections.OrderedDict
         manifest = od([
+            ('id', self._id),
             ('stencila', od([
                 ('package', 'py'),
                 ('version', __version__)
@@ -135,7 +137,6 @@ class Host(object):
         ])
         if self._started:
             manifest.update([
-                ('id', self._id),
                 ('process', {'pid': os.getpid()}),
                 ('servers', self.servers),
                 ('instances', list(self._instances.keys()))
@@ -283,7 +284,8 @@ class Host(object):
             if not quiet:
                 print('Host has started at: %s' % self._servers['http'].url)
 
-        return self
+            # On normal process exit, stop this host
+            atexit.register(self.stop)
 
     def stop(self, quiet=False):
         """
@@ -296,43 +298,23 @@ class Host(object):
             server.stop()
             del self._servers['http']
 
-        # Deregister as a running host
-        for filename in [self.id + '.json', self.id + '.key']:
-            path = os.path.join(self.temp_dir(), 'hosts', filename)
-            if os.path.exists(path):
-                os.remove(path)
+            # Deregister as a running host
+            for filename in [self.id + '.json', self.id + '.key']:
+                path = os.path.join(self.temp_dir(), 'hosts', filename)
+                if os.path.exists(path):
+                    os.remove(path)
 
-        if not quiet:
-            print('Host has stopped')
+            if not quiet:
+                print('Host has stopped')
 
-        return self
-
-    def run(self, address='127.0.0.1', port=2000, authorization=True, quiet=False, echo=False):
+    def run(self, address='127.0.0.1', port=2000, authorization=True):
         """
         Start serving this host and wait for connections
         indefinitely
         """
-        if echo:
-            quiet = True
-        self.start(address=address, port=port, authorization=authorization, quiet=quiet)
+        self.start(address=address, port=port, authorization=authorization)
 
-        if echo:
-            print(json.dumps({
-                "id": self.id,
-                "key": self.key,
-                "manifest": self.manifest()
-            }, indent=True))
-            sys.stdout.flush()
-
-        if not quiet:
-            print('Use Ctrl+C to stop')
-
-        # Handle SIGINT if this process is killed somehow other than by
-        # Ctrl+C (e.g. by a parent peer)
-        def stop(signum, frame):
-            self.stop()
-            sys.exit(0)
-        signal.signal(signal.SIGINT, stop)
+        print('Use Ctrl+C to stop')
 
         while True:
             try:
@@ -342,7 +324,25 @@ class Host(object):
                 break
 
     def spawn(self):
-        self.run(quiet=True, echo=True)
+        self.start(quiet=True)
+
+        print(json.dumps({
+            "id": self.id,
+            "key": self.key,
+            "manifest": self.manifest()
+        }, indent=True))
+        sys.stdout.flush()
+
+        # Handle signals if this process is killed somehow
+        # (e.g. by a parent peer)
+        def stop(signum, frame):
+            self.stop(quiet=True)
+            sys.exit(0)
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGINT, stop)
+
+        while True:
+            time.sleep(1000)
 
     @property
     def servers(self):
