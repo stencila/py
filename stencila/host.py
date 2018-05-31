@@ -201,7 +201,7 @@ class Host(object):
         else:
             raise Exception('Unknown instance: %s' % name)
 
-    def put(self, name, method, arg):
+    def put(self, name, method, arg=None):
         """
         Call a method of an instance
 

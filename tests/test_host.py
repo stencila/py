@@ -39,7 +39,7 @@ def test_host_manifest():
     h.start()
     manifest = h.manifest()
     assert manifest['id'] == h.id
-    assert manifest['process'] == os.getpid()
+    assert manifest['process']['pid'] == os.getpid()
     assert len(manifest['instances']) == 0
 
     h.stop()
@@ -82,7 +82,8 @@ def test_host_put():
     h = Host()
 
     id = h.post('PythonContext')
-    assert h.put(id, 'execute', {'code': '6*7'})['value'], pack(42)
+    result = h.put(id, 'execute', {'code': '6*7'})
+    assert result['outputs'][0]['value']['data'] == 42
 
     with pytest.raises(Exception) as exc:
         h.put(id, 'fooBar')

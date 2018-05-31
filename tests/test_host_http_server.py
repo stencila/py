@@ -3,6 +3,7 @@ import json
 
 from stencila.host import host
 from stencila.host_http_server import HostHttpServer
+from stencila.value import pack
 
 from werkzeug.wrappers import Request, Response
 from werkzeug.test import Client, EnvironBuilder
@@ -31,13 +32,7 @@ def test_handle():
     s.start()
 
     r = c.get('/')
-    assert r.status == '403 FORBIDDEN'
-
-    r = c.get('/?ticket=%s' % s.ticket_create())
     assert r.status == '200 OK'
-
-    r = c.get('/foo/bar/?ticket=%s' % s.ticket_create())
-    assert r.status == '500 INTERNAL SERVER ERROR'
 
     s.stop()
 
@@ -47,10 +42,7 @@ def test_route():
 
     assert s.route('OPTIONS', None) == (s.options,)
 
-    assert s.route('GET', '/') == (s.home,)
-
     assert s.route('GET', '/static/some/file.js') == (s.static, 'some/file.js')
-    assert s.route('GET', '/favicon.ico') == (s.static, 'favicon.ico')
 
     assert s.route('POST', '/type') == (s.post, 'type')
 
@@ -66,18 +58,6 @@ def test_options():
 
     r = s.options(request())
     assert r.status == '200 OK'
-
-
-def test_home():
-    s = HostHttpServer(host)
-
-    r = s.home(request(headers={'Accept': 'application/json'}))
-    assert r.status == '200 OK'
-    assert json.loads(r.data.decode()) == host.manifest()
-
-    r = s.home(request())
-    assert r.status == '200 OK'
-    assert r.headers['Content-Type'] == 'text/html; charset=utf-8'
 
 
 def test_static():
@@ -120,7 +100,7 @@ def test_put():
     r2 = s.put(request(data='{"code":"6*7"}'), json.loads(r1.data.decode()), 'execute')
     assert r2.status == '200 OK'
     assert r2.headers['content-type'] == 'application/json'
-    assert json.loads(r2.data.decode())['value']['data'] == '42'
+    assert json.loads(r2.data.decode())['outputs'][0]['value']['data'] == 42
 
 
 def test_delete():
