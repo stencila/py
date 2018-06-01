@@ -237,13 +237,13 @@ class HostHttpServer(object):
             id = match.group(1)
             method = match.group(3)
             if verb == 'POST' and id:
-                return (self.post, id)
+                return (self.run, 'create', id)
             if verb == 'GET' and id:
-                return (self.get, id)
+                return (self.run, 'get', id)
             elif verb == 'PUT' and id and method:
-                return (self.put, id, method)
+                return (self.run, 'call', id, method)
             elif verb == 'DELETE' and id:
-                return (self.delete, id)
+                return (self.run, 'delete', id)
 
         return None
 
@@ -275,52 +275,13 @@ class HostHttpServer(object):
         """
         Run a host method
         """
+        args =list(args)
         if request.data:
             arg = json.loads(request.data.decode())
-            args.push(arg)
+            args.append(arg)
         result = getattr(self._host, method)(*args)
-        json = to_json(result)
-        return Response(json, mimetype='application/json')
-
-    def post(self, request, type):
-        """
-        Handle a POST request
-        """
-        kwargs = json.loads(request.data.decode()) if request.data else {}
-        return Response(
-            to_json(self._host.post(type, kwargs)),
-            mimetype='application/json'
-        )
-
-    def get(self, request, name):
-        """
-        Handle a GET request
-        """
-        return Response(
-            to_json(self._host.get(name)),
-            mimetype='application/json'
-        )
-
-    def put(self, request, name, method):
-        """
-        Handle a PUT request
-        """
-        kwargs = json.loads(request.data.decode()) if request.data else {}
-        return Response(
-            to_json(self._host.put(name, method, kwargs)),
-            mimetype='application/json'
-        )
-
-    def delete(self, request, name):
-        """
-        Handle a DELETE request
-        """
-        self._host.delete(name)
-
-        return Response(
-            '',
-            mimetype='application/json'
-        )
+        body = to_json(result)
+        return Response(body, mimetype='application/json')
 
 
 class JSONEncoder(json.JSONEncoder):

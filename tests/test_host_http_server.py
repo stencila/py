@@ -44,13 +44,13 @@ def test_route():
 
     assert s.route('GET', '/static/some/file.js') == (s.static, 'some/file.js')
 
-    assert s.route('POST', '/type') == (s.post, 'type')
+    assert s.route('POST', '/type') == (s.run, 'create', 'type')
 
-    assert s.route('GET', '/id') == (s.get, 'id')
+    assert s.route('GET', '/id') == (s.run, 'get', 'id')
 
-    assert s.route('PUT', '/id!method') == (s.put, 'id', 'method')
+    assert s.route('PUT', '/id!method') == (s.run, 'call', 'id', 'method')
 
-    assert s.route('DELETE', '/id') == (s.delete, 'id')
+    assert s.route('DELETE', '/id') == (s.run, 'delete', 'id')
 
 
 def test_options():
@@ -75,37 +75,29 @@ def test_static():
     assert r.status == '403 FORBIDDEN'
 
 
-def test_post():
+def test_run():
     s = HostHttpServer(host)
 
-    r = s.post(request(), 'PythonContext')
+    # Create a context
+    r = s.run(request(), 'create', 'PythonContext')
     assert r.status == '200 OK'
     assert r.headers['content-type'] == 'application/json'
 
+    id = json.loads(r.data.decode())
 
-def test_get():
-    s = HostHttpServer(host)
+    # Get the context
+    r = s.run(request(), 'get', id)
+    assert r.status == '200 OK'
+    assert r.headers['content-type'] == 'application/json'
+    assert r.data.decode() == '{}'
 
-    r1 = s.post(request(), 'PythonContext')
-    r2 = s.get(request(), json.loads(r1.data.decode()))
-    assert r2.status == '200 OK'
-    assert r2.headers['content-type'] == 'application/json'
-    assert r2.data.decode() == '{}'
+    # Call a context method
+    r = s.run(request(data='{"code":"6*7"}'), 'call', id, 'execute')
+    assert r.status == '200 OK'
+    assert r.headers['content-type'] == 'application/json'
+    cell = json.loads(r.data.decode())
+    assert cell['outputs'][0]['value']['data'] == 42
 
-
-def test_put():
-    s = HostHttpServer(host)
-
-    r1 = s.post(request(), 'PythonContext')
-    r2 = s.put(request(data='{"code":"6*7"}'), json.loads(r1.data.decode()), 'execute')
-    assert r2.status == '200 OK'
-    assert r2.headers['content-type'] == 'application/json'
-    assert json.loads(r2.data.decode())['outputs'][0]['value']['data'] == 42
-
-
-def test_delete():
-    s = HostHttpServer(host)
-
-    r1 = s.post(request(), 'PythonContext')
-    r2 = s.delete(request(), json.loads(r1.data.decode()))
-    assert r2.status == '200 OK'
+    # Delete the context
+    r = s.run(request(), 'delete', id)
+    assert r.status == '200 OK'

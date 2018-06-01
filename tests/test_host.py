@@ -55,22 +55,22 @@ def test_host_register():
         assert manifest == json.load(manifest_file)
 
 
-def test_host_post():
+def test_host_create():
     h = Host()
 
-    id1 = h.post('PythonContext')
-    id2 = h.post('PythonContext')
+    id1 = h.create('PythonContext')
+    id2 = h.create('PythonContext')
     assert id1 != id2
 
     with pytest.raises(Exception) as exc:
-        h.post('fooType')
+        h.create('fooType')
     exc.match('Unknown type: fooType')
 
 
 def test_host_get():
     h = Host()
 
-    id = h.post('PythonContext')
+    id = h.create('PythonContext')
     assert isinstance(h.get(id), PythonContext)
 
     with pytest.raises(Exception) as exc:
@@ -78,26 +78,26 @@ def test_host_get():
     exc.match('Unknown instance')
 
 
-def test_host_put():
+def test_host_call():
     h = Host()
 
-    id = h.post('PythonContext')
-    result = h.put(id, 'execute', {'code': '6*7'})
+    id = h.create('PythonContext')
+    result = h.call(id, 'execute', {'code': '6*7'})
     assert result['outputs'][0]['value']['data'] == 42
 
     with pytest.raises(Exception) as exc:
-        h.put(id, 'fooBar')
+        h.call(id, 'fooBar')
     exc.match('Unknown method')
 
     with pytest.raises(Exception) as exc:
-        h.put('foo', 'bar')
+        h.call('foo', 'bar')
     exc.match('Unknown instance')
 
 
 def test_host_delete():
     h = Host()
 
-    id = h.post('PythonContext')
+    id = h.create('PythonContext')
     assert isinstance(h.get(id), PythonContext)
     h.delete(id)
     with pytest.raises(Exception) as exc:

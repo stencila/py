@@ -163,7 +163,7 @@ class Host(object):
     def shutdown(self, host):
         return True
 
-    def post(self, type, args={}):
+    def create(self, type, args={}):
         """
         Create a new instance of a type
 
@@ -202,7 +202,7 @@ class Host(object):
         else:
             raise Exception('Unknown instance: %s' % name)
 
-    def put(self, name, method, arg=None):
+    def call(self, name, method, arg=None):
         """
         Call a method of an instance
 
