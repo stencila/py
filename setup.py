@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='stencila',
-    version='0.28.0',
+    version='0.28.1',
 
     description='Stencila for Python',
     long_description='''
@@ -27,6 +27,7 @@ setup(
         'matplotlib',
         'numpy',
         'pandas',
+        'PyJWT',
         'six',
         'sphinxcontrib-napoleon',
         'werkzeug'

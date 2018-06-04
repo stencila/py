@@ -66,12 +66,12 @@ class HostHttpServer(object):
 
     """
 
-    def __init__(self, host, address='127.0.0.1', port=2000, authorization=True, tickets_reuse=True):
+    def __init__(self, host, address='127.0.0.1', port=2000, authorization=True):
         self._host = host
         self._address = address
         self._port = port
 
-        auth = os.environ.get('STENCILA_AUTHORIZATION')
+        auth = os.environ.get('STENCILA_AUTH')
         if auth == 'true':
             authorization = True
         elif auth == 'false':
@@ -79,9 +79,6 @@ class HostHttpServer(object):
         self._authorization = authorization
 
         self._server = None
-        self._tickets = []
-        self._tickets_reuse = tickets_reuse
-        self._tokens = []
 
     @property
     def url(self):
@@ -154,243 +151,174 @@ class HostHttpServer(object):
         """
         Handle a HTTP request
         """
-        # Check authorization. Note that browsers do not send credentials (e.g. cookies)
-        # in OPTIONS requests
-        cookie = None
-        if self._authorization and request.method != 'OPTIONS':
-            # Check for ticket
-            ticket = request.args.get('ticket')
-            if ticket:
-                # Check ticket is valid
-                if not self.ticket_check(ticket):
-                    return Response(status=403)
-                else:
-                    # Set token cookie
-                    cookie = 'token=%s; Path=/' % self.token_create()
-            else:
-                # Check for token
-                token = request.cookies.get('token')
-                if not token or not self.token_check(token):
-                    return Response(status=403)
-
-        # Route request to a method
-        method_args = self.route(request.method, request.path)
-        method = method_args[0]
-        args = method_args[1:]
-        if method is None:
-            return Response(status=400)
-
-        # Run method
+        response = Response()
         try:
-            response = method(request, *args)
-        except Exception:
-            stream = StringIO() if six.PY3 else BytesIO()
-            traceback.print_exc(file=stream)
-            return Response(stream.getvalue(), status=500)
-
-        # CORS used to control access by browsers. In particular, CORS
-        # can prevent access by XHR requests made by Javascript in third party sites.
-        # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
-
-        # Get the Origin header (sent in CORS and POST requests) and fall back to Referer header
-        # if it is not present (either of these should be present in most browser requests)
-        origin = request.headers.get('Origin')
-        if not origin and request.headers.get('Referer'):
-            match = re.match(r'^https?://([\w.]+)(:\d+)?', request.headers.get('Referer'))
-            if match:
-                origin = match.group(0)
-
-        # Check that host is in whitelist
-        if origin:
-            match = re.match(r'^https?://([\w.]+)(:\d+)?', origin)
-            if match:
-                host = match.group(1)
-                match = re.match(r'^((127\.0\.0\.1)|(localhost)|(([^.]+\.)?stenci\.la))$', host)
-                if not match:
-                    origin = None
+            # Check authorization
+            authorized = False
+            if not self._host.key:
+              authorized = True
             else:
-                origin = None
+              auth_header = request.headers.get('Authorization')
+              if auth_header:
+                match = re.match(r'^Bearer (.+)', auth_header)
+                if match:
+                  token = match.group(1)
+                  try:
+                    self._host.authorize_token(token)
+                  except Exception as exc:
+                    return self.error403(request, response, str(exc))
+                  else:
+                    authorized = True
 
-        # If an origin has been found and is authorized set CORS headers
-        # Without these headers browser XHR request get an error like:
-        #     No 'Access-Control-Allow-Origin' header is present on the requested resource.
-        #     Origin 'http://evil.hackers:4000' is therefore not allowed access.
-        if origin:
-            # 'Simple' requests (GET and POST XHR requests)
-            response.headers['Access-Control-Allow-Origin'] = origin
-            # Allow sending cookies and other credentials
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-            # Pre-flighted requests by OPTIONS method (made before PUT, DELETE etc
-            # XHR requests and in other circumstances)
-            # get additional CORS headers
+            # Add CORS headers used to control access by browsers. In particular, CORS
+            # can prevent access by XHR requests made by Javascript in third party sites.
+            # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
+
+            # Get the Origin header (sent in CORS and POST requests) and fall back to Referer header
+            # if it is not present (either of these should be present in most browser requests)
+            origin = request.headers.get('Origin')
+            if not origin and request.headers.get('Referer'):
+                match = re.match(r'^https?://([\w.]+)(:\d+)?', request.headers.get('Referer'))
+                if match:
+                    origin = match.group(0)
+
+            # Check that host is in whitelist
+            if origin:
+                match = re.match(r'^https?://([\w.]+)(:\d+)?', origin)
+                if match:
+                    host = match.group(1)
+                    match = re.match(r'^((127\.0\.0\.1)|(localhost)|(([^.]+\.)?stenci\.la))$', host)
+                    if not match:
+                        origin = None
+                else:
+                    origin = None
+
+            # If an origin has been found and is authorized set CORS headers
+            # Without these headers browser XHR request get an error like:
+            #     No 'Access-Control-Allow-Origin' header is present on the requested resource.
+            #     Origin 'http://evil.hackers:4000' is therefore not allowed access.
+            if origin:
+                # 'Simple' requests (GET and POST XHR requests)
+                response.headers['Access-Control-Allow-Origin'] = origin
+                # Allow sending cookies and other credentials
+                response.headers['Access-Control-Allow-Credentials'] = 'true'
+                # Pre-flighted requests by OPTIONS method (made before PUT, DELETE etc
+                # XHR requests and in other circumstances)
+                # get additional CORS headers
+                if request.method == 'OPTIONS':
+                    # Allowable methods and headers
+                    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+                    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                    # "how long the response to the preflight request can be cached for without
+                    # sending another preflight request"
+                    response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
+
+
             if request.method == 'OPTIONS':
-                # Allowable methods and headers
-                response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-                # "how long the response to the preflight request can be cached for without
-                # sending another preflight request"
-                response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
+                # For preflighted CORS OPTIONS requests return an empty response with headers set
+                # (https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Preflighted_requests)
+                return response
+            else:
+                # Route request to a method
+                endpoint = self.route(request.method, request.path, authorized)
+                if not endpoint:
+                    return self.error400()
+                
+                method_name = endpoint[0]
+                method_args = endpoint[1:]
+                method = getattr(self, method_name)
+                response = method(request, response, *method_args)
+                return response
+        except Exception as exc:
+            return self.error500(request, response)
 
-        # Set cookie header if necessary
-        if cookie:
-            response.headers['Set-Cookie'] = cookie
-
-        return response
-
-    def route(self, verb, path):
+    def route(self, verb, path, authorized = False):
         """
         Route a HTTP request
         """
-        if verb == 'OPTIONS':
-            return (self.options,)
-
         if path == '/':
-            return (self.home,)
-        if path == '/favicon.ico':
-            return (self.static, 'favicon.ico')
+            return ('static', 'index.html')
         if path[:8] == '/static/':
-            return (self.static, path[8:])
+            return ('static', path[8:])
+        if path == '/manifest':
+            return ('run', 'manifest')
+
+        if not authorized: return ('error401', path)
+
+        if path[:9] == '/environ/':
+            if verb == 'POST':
+                return ('run', 'startup', path[9:])
+            if verb == 'DELETE':
+                return ('run', 'shutdown', path[9:])
 
         match = re.match(r'^/(.+?)(!(.+))?$', path)
         if match:
             id = match.group(1)
             method = match.group(3)
             if verb == 'POST' and id:
-                return (self.post, id)
+                return ('run', 'create', id)
             if verb == 'GET' and id:
-                return (self.get, id)
+                return ('run', 'get', id)
             elif verb == 'PUT' and id and method:
-                return (self.put, id, method)
+                return ('run', 'call', id, method)
             elif verb == 'DELETE' and id:
-                return (self.delete, id)
+                return ('run', 'delete', id)
 
         return None
 
-    def options(self, request):
-        """
-        Handle a OPTIONS request
-
-        Necessary for preflighted CORS requests (https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Preflighted_requests)
-        """
-        return Response()
-
-    def home(self, request):
-        """
-        Handle a GET request to the root path /
-        """
-        if 'application/json' in request.headers.get('accept', ''):
-            return Response(
-                to_json(self._host.manifest()),
-                mimetype='application/json'
-            )
-        else:
-            return self.static(request, 'index.html')
-
-    def static(self, request, path):
+    def static(self, request, response, path):
         """
         Handle a GET request for a static file
         """
         static_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
         requested_path = os.path.abspath(os.path.join(static_path, path))
         if os.path.commonprefix([static_path, requested_path]) != static_path:
-            return Response(status=403)
+            return self.error403(request, response)
         elif not os.path.exists(requested_path):
-            return Response(status=404)
+            return self.error404(request, response)
         else:
-            return Response(
-                open(requested_path).read(),
-                mimetype=mimetypes.guess_type(path)[0]
-            )
+            response.set_data(open(requested_path).read())
+            response.headers['Content-Type'] = mimetypes.guess_type(path)[0]
+            return response
 
-    def post(self, request, type):
+    def run(self, request, response, method, *args):
         """
-        Handle a POST request
+        Run a host method
         """
-        kwargs = json.loads(request.data.decode()) if request.data else {}
-        return Response(
-            to_json(self._host.post(type, kwargs)),
-            mimetype='application/json'
-        )
+        args = list(args)
+        if request.data:
+            arg = json.loads(request.data.decode())
+            args.append(arg)
+        result = getattr(self._host, method)(*args)
+        data = to_json(result)
 
-    def get(self, request, name):
-        """
-        Handle a GET request
-        """
-        return Response(
-            to_json(self._host.get(name)),
-            mimetype='application/json'
-        )
+        response.set_data(data)
+        response.headers['Content-Type'] = 'application/json'
+        return response
 
-    def put(self, request, name, method):
-        """
-        Handle a PUT request
-        """
-        kwargs = json.loads(request.data.decode()) if request.data else {}
-        return Response(
-            to_json(self._host.put(name, method, kwargs)),
-            mimetype='application/json'
-        )
+    def error(self, request, response, code, name, what = ''):
+        response.status_code = code
+        response.set_data('%s: %s' % (name, what))
+        response.headers['Content-Type'] = 'text/plain'
+        return response
 
-    def delete(self, request, name):
-        """
-        Handle a DELETE request
-        """
-        self._host.delete(name)
+    def error400(self, request, response, what = ''):
+        return self.error(request, response, 400, 'Bad request', what)
 
-        return Response(
-            '',
-            mimetype='application/json'
-        )
+    def error401(self, request, response, what = ''):
+        return self.error(request, response, 401, 'Unauthorized', what)
 
-    def ticket_create(self):
-        """
-        Create a ticket (an access token)
-        """
-        ticket = ''.join(random.choice(
-            string.ascii_lowercase + string.ascii_uppercase + string.digits
-        ) for _ in range(12))
-        self._tickets.append(ticket)
-        return ticket
+    def error403(self, request, response, what = ''):
+        return self.error(request, response, 403, 'Forbidden', what)
 
-    def ticket_check(self, ticket):
-        """
-        Check that a ticket is valid.
+    def error404(self, request, response, what = ''):
+        return self.error(request, response, 404, 'Not found', what)
 
-        If it is, and ``tickets_reuse = False```, then it is removed from
-        the list of valid tickets
-        """
-        if ticket in self._tickets:
-            if not self._tickets_reuse:
-                self._tickets.remove(ticket)
-            return True
-        else:
-            return False
-
-    def ticketed_url(self):
-        """
-        Create a URL with a ticket query parameter so users
-        can connect to this server
-        """
-        url = self.url
-        if self._authorization:
-            url += '/?ticket=' + self.ticket_create()
-        return url
-
-    def token_create(self):
-        """
-        Create a token (a multiple-use access token)
-        """
-        token = ''.join(random.choice(
-            string.ascii_lowercase + string.ascii_uppercase + string.digits
-        ) for _ in range(64))
-        self._tokens.append(token)
-        return token
-
-    def token_check(self, token):
-        """
-        Check that a token is valid.
-        """
-        return token in self._tokens
+    def error500(self, request, response):
+        stream = StringIO() if six.PY3 else BytesIO()
+        traceback.print_exc(file=stream)
+        trace = stream.getvalue()
+        return self.error(request, response, 500, 'Internal error', trace)
 
 
 class JSONEncoder(json.JSONEncoder):

@@ -2,6 +2,7 @@ import base64
 import json
 from io import BytesIO
 from collections import OrderedDict
+import six
 
 import matplotlib
 import numpy
@@ -72,7 +73,8 @@ class Context(object):
         elif type_ == 'boolean':
             data = 'true' if value else 'false'
         elif type_ in ('integer', 'float'):
-            data = repr(value)
+            type_ = 'number'
+            data = value
         elif type_ == 'string':
             data = value
         elif type_ in ('array', 'object'):
@@ -118,3 +120,28 @@ class Context(object):
             raise RuntimeError('Unable to pack object\n  type: ' + type_)
 
         return {'type': type_, 'data': data}
+
+    def unpack(self, packed):
+        return packed['data']
+
+    def compile(self, cell):
+        if isinstance(cell, dict):
+            if 'source' in cell and 'data' in cell['source']:
+                cell['code'] = cell['source']['data']
+                del cell['source']
+        elif isinstance(cell, six.string_types):
+            cell = {
+                'code': cell
+            }
+        else:
+            raise RuntimeError('Invalid type for cell: "%s"' % type(cell).__name__)
+
+        cell['lang'] = cell.get('lang', None)
+        cell['expr'] = cell.get('expr', False)
+        cell['global'] = cell.get('global', False)
+        cell['options'] = cell.get('options', {})
+        cell['inputs'] = cell.get('inputs', [])
+        cell['outputs'] = cell.get('outputs', [])
+        cell['messages'] = cell.get('messages', [])
+
+        return cell

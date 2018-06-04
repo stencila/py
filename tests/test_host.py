@@ -39,7 +39,7 @@ def test_host_manifest():
     h.start()
     manifest = h.manifest()
     assert manifest['id'] == h.id
-    assert manifest['process'] == os.getpid()
+    assert manifest['process']['pid'] == os.getpid()
     assert len(manifest['instances']) == 0
 
     h.stop()
@@ -55,22 +55,22 @@ def test_host_register():
         assert manifest == json.load(manifest_file)
 
 
-def test_host_post():
+def test_host_create():
     h = Host()
 
-    id1 = h.post('PythonContext')
-    id2 = h.post('PythonContext')
+    id1 = h.create('PythonContext')
+    id2 = h.create('PythonContext')
     assert id1 != id2
 
     with pytest.raises(Exception) as exc:
-        h.post('fooType')
+        h.create('fooType')
     exc.match('Unknown type: fooType')
 
 
 def test_host_get():
     h = Host()
 
-    id = h.post('PythonContext')
+    id = h.create('PythonContext')
     assert isinstance(h.get(id), PythonContext)
 
     with pytest.raises(Exception) as exc:
@@ -78,25 +78,26 @@ def test_host_get():
     exc.match('Unknown instance')
 
 
-def test_host_put():
+def test_host_call():
     h = Host()
 
-    id = h.post('PythonContext')
-    assert h.put(id, 'execute', {'code': '6*7'})['value'], pack(42)
+    id = h.create('PythonContext')
+    result = h.call(id, 'execute', {'code': '6*7'})
+    assert result['outputs'][0]['value']['data'] == 42
 
     with pytest.raises(Exception) as exc:
-        h.put(id, 'fooBar')
+        h.call(id, 'fooBar')
     exc.match('Unknown method')
 
     with pytest.raises(Exception) as exc:
-        h.put('foo', 'bar')
+        h.call('foo', 'bar')
     exc.match('Unknown instance')
 
 
 def test_host_delete():
     h = Host()
 
-    id = h.post('PythonContext')
+    id = h.create('PythonContext')
     assert isinstance(h.get(id), PythonContext)
     h.delete(id)
     with pytest.raises(Exception) as exc:
@@ -114,3 +115,23 @@ def test_host_start_stop():
     h.stop()
     assert len(h.servers) == 0
     assert len(h.manifest()['servers']) == 0
+
+
+def test_generate_token_authorize_token():
+    host = Host()
+
+    token1 = host.generate_token()
+    host.authorize_token(token1)
+
+    token2 = host.generate_token()
+    host.authorize_token(token2)
+
+    assert token1 != token2
+
+    with pytest.raises(Exception) as exc:
+        host.authorize_token("not a valid token")
+    exc.match('Not enough segments')
+
+    with pytest.raises(Exception) as exc:
+        host.authorize_token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MjY5NjA1Nzl9.pgTAtdDGHZZd05hg-Tmy8Cl_yrWBzBSZMaCTkbztc1E")
+    exc.match('Signature verification failed')

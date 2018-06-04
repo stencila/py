@@ -6,6 +6,7 @@ such as spawning new hosts. Provide a function name as first argument
 and function options as a JSON object in the second argument or
 standard input. e.g.
 
+  python -m stencila register
   python -m stencila spawn '{"port":2300}'
   echo '{"port":2300}' | python -m stencila spawn
 """

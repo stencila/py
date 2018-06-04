@@ -1,17 +1,20 @@
 # pylint: disable=superfluous-parens
 
+import atexit
+import binascii
 import collections
 import datetime
 import json
+import jwt
 import os
 import platform
-import random
 import signal
-import string
+import stat
 import subprocess
 import sys
 import tempfile
 import time
+import uuid
 
 from .version import __version__
 from .host_http_server import HostHttpServer
@@ -46,7 +49,8 @@ class Host(object):
     """
 
     def __init__(self):
-        self._id = 'py-' + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(64))
+        self._id = 'py-host-%s' % uuid.uuid4()
+        self._key = binascii.hexlify(os.urandom(64)).decode()
         self._servers = {}
         self._started = None
         self._heartbeat = None
@@ -61,6 +65,15 @@ class Host(object):
         :returns: An identification string
         """
         return self._id
+
+    @property
+    def key(self):
+        """
+        Get the seurity key for this Host
+
+        :returns: A key string
+        """
+        return self._key
 
     def user_dir(self):
         """
@@ -90,6 +103,15 @@ class Host(object):
         """
         return os.path.join(tempfile.gettempdir(), 'stencila')
 
+    def environs(self):
+        return [
+            {
+                "id": "local",
+                "name": "local",
+                "version": None
+            }
+        ]
+
     def types(self):
         return { name: clas.spec for (name, clas) in TYPES.items() }
 
@@ -105,17 +127,18 @@ class Host(object):
         """
         od = collections.OrderedDict
         manifest = od([
+            ('id', self._id),
             ('stencila', od([
                 ('package', 'py'),
                 ('version', __version__)
             ])),
             ('spawn', [sys.executable, '-m', 'stencila', 'spawn']),
+            ('environs', self.environs()),
             ('types', self.types())
         ])
         if self._started:
             manifest.update([
-                ('id', self._id),
-                ('process', os.getpid()),
+                ('process', {'pid': os.getpid()}),
                 ('servers', self.servers),
                 ('instances', list(self._instances.keys()))
             ])
@@ -134,7 +157,13 @@ class Host(object):
         with open(os.path.join(dir, 'py.json'), 'w') as file:
             file.write(json.dumps(self.manifest(), indent=True))
 
-    def post(self, type, args={}):
+    def startup(self, environ):
+        return [{"path": "/"}]
+
+    def shutdown(self, host):
+        return True
+
+    def create(self, type, args={}):
         """
         Create a new instance of a type
 
@@ -173,7 +202,7 @@ class Host(object):
         else:
             raise Exception('Unknown instance: %s' % name)
 
-    def put(self, name, method, kwargs={}):
+    def call(self, name, method, arg=None):
         """
         Call a method of an instance
 
@@ -189,7 +218,7 @@ class Host(object):
             except AttributeError:
                 raise Exception('Unknown method: %s' % method)
             else:
-                return func(**kwargs)
+                return func(arg)
         else:
             raise Exception('Unknown instance: %s' % name)
 
@@ -227,14 +256,37 @@ class Host(object):
             dir = os.path.join(self.temp_dir(), 'hosts')
             if not os.path.exists(dir):
                 os.makedirs(dir)
-            with open(os.path.join(dir, self.id + '.json'), 'w', 0o600) as file:
-                file.write(json.dumps(self.manifest(), indent=True))
+
+            # Write content to a secure file only readable by current user
+            # Based on https://stackoverflow.com/a/15015748/4625911
+            def write_secure(filename, content):
+                path = os.path.join(dir, filename)
+
+                # Remove any existing file with potentially elevated mode
+                if os.path.isfile(path):
+                    os.remove(path)
+
+                # Create a file handle
+                mode = stat.S_IRUSR | stat.S_IWUSR  # This is 0o600 in octal.
+                umask = 0o777 ^ mode  # Prevents always downgrading umask to 0.
+                umask_original = os.umask(0o177)  # 0o777 ^ 0o600
+                try:
+                    handle = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                finally:
+                    os.umask(umask_original)
+
+                # Open file handle and write to file
+                with os.fdopen(handle, 'w') as file:
+                    file.write(content)
+
+            write_secure(self.id + '.json', json.dumps(self.manifest(), indent=True))
+            write_secure(self.id + '.key', self.key)
 
             if not quiet:
-                urls = [s.ticketed_url() for s in self._servers.values()]
-                print('Host has started at: %s' % ', '.join(urls))
+                print('Host has started at: %s' % self._servers['http'].url)
 
-        return self
+            # On normal process exit, stop this host
+            atexit.register(self.stop)
 
     def stop(self, quiet=False):
         """
@@ -247,38 +299,23 @@ class Host(object):
             server.stop()
             del self._servers['http']
 
-        # Deregister as a running host
-        path = os.path.join(self.temp_dir(), 'hosts', self.id + '.json')
-        if os.path.exists(path):
-            os.remove(path)
+            # Deregister as a running host
+            for filename in [self.id + '.json', self.id + '.key']:
+                path = os.path.join(self.temp_dir(), 'hosts', filename)
+                if os.path.exists(path):
+                    os.remove(path)
 
-        if not quiet:
-            print('Host has stopped')
+            if not quiet:
+                print('Host has stopped')
 
-        return self
-
-    def run(self, address='127.0.0.1', port=2000, authorization=True, quiet=False, echo=False):
+    def run(self, address='127.0.0.1', port=2000, authorization=True):
         """
         Start serving this host and wait for connections
         indefinitely
         """
-        if echo:
-            quiet = True
-        self.start(address=address, port=port, authorization=authorization, quiet=quiet)
+        self.start(address=address, port=port, authorization=authorization)
 
-        if echo:
-            print(json.dumps(self.manifest(), indent=True))
-            sys.stdout.flush()
-
-        if not quiet:
-            print('Use Ctrl+C to stop')
-
-        # Handle SIGINT if this process is killed somehow other than by
-        # Ctrl+C (e.g. by a parent peer)
-        def stop(signum, frame):
-            self.stop()
-            sys.exit(0)
-        signal.signal(signal.SIGINT, stop)
+        print('Use Ctrl+C to stop')
 
         while True:
             try:
@@ -286,6 +323,27 @@ class Host(object):
             except KeyboardInterrupt:
                 self.stop()
                 break
+
+    def spawn(self):
+        self.start(quiet=True)
+
+        print(json.dumps({
+            "id": self.id,
+            "key": self.key,
+            "manifest": self.manifest()
+        }, indent=True))
+        sys.stdout.flush()
+
+        # Handle signals if this process is killed somehow
+        # (e.g. by a parent peer)
+        def stop(signum, frame):
+            self.stop(quiet=True)
+            sys.exit(0)
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGINT, stop)
+
+        while True:
+            time.sleep(1000)
 
     @property
     def servers(self):
@@ -301,10 +359,44 @@ class Host(object):
         for name in self._servers.keys():
             server = self._servers[name]
             servers[name] = {
-                'url': server.url,
-                'ticket': server.ticket_create()
+                'url': server.url
             }
         return servers
+
+    def generate_token(self, host=None):
+        """
+        Generate a request token.
+
+        :returns: A JWT token string
+        """
+        if host is None:
+            key = self.key
+        else:
+            # TODO Support token generation for peers based on held keys
+            raise RuntimeError('Generation of tokens for peer hosts is not yet supported')
+
+        now = datetime.datetime.utcnow()
+        payload = {
+            'iat': now,
+            'exp': now + datetime.timedelta(seconds=300),
+            'iss': self.id,
+            'jit': binascii.hexlify(os.urandom(32)).decode()
+        }
+        return jwt.encode(payload, key, algorithm='HS256').decode('utf-8')
+
+    def authorize_token(self, token):
+        """
+        Authorize a request token.
+
+        Throws an error if the token is invalid.
+
+        :param token: A JWT token string
+        """
+        payload = jwt.decode(token, self.key, algorithms=['HS256'])
+
+        # TODO Check and store `iss` and `jti` to prevent replay attacks
+
+        return payload
 
     def view(self):  # pragma: no cover
         """

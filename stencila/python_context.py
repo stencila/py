@@ -1,10 +1,10 @@
 import ast
-import imp
+import io
 import inspect
 import glob
 import os
 import re
-from six import exec_
+import six
 import sphinxcontrib.napoleon
 import sphinxcontrib.napoleon.docstring
 import sys
@@ -32,19 +32,11 @@ class PythonContext(Context):
         if self._dir:
             os.chdir(self._dir)
 
-        self._scope = {}
+        self._globals = {}
 
-        self._global_scope = {
-            'numpy': numpy,
-            'np': numpy,
-            'matplotlib': matplotlib,
-            'plt': plt,
-            'pandas': pandas,
-            'pd': pandas
-        }
+        self._variables = {}
 
-    def getLibraries(self):
-        # TODO: return registered function libraries
+    def libraries(self, *args):
         return []
 
     def list(self, types=[]):
@@ -54,47 +46,70 @@ class PythonContext(Context):
                 names.append(name)
         return names
 
-    def compile(self, operation):
+    def compile(self, cell):
         """
-        Compile an operation
+        Compile a cell
 
-        :returns: A dictionary with ``messages`` and a compiled ``operation``
+        :returns: A compiled ``cell``
         """
-        messages = []
-        # Try block to ensure that any exceptions are converted into a
-        # runtime error message
+        cell = Context.compile(self, cell)
+
         try:
-            type = operation.get('type')
-            if type == 'cell':
-                operation, messages = self.compile_cell(operation)
-            elif type == 'func':
-                operation, messages = self.compile_func(operation)
+            # Ensure this is a Python cell
+            if cell['lang'] and cell['lang'] != 'py':
+                raise RuntimeError('Cell code must be Python code')
             else:
-                messages = [{
+                cell['lang'] = 'py'
+
+            # If the cell's code is empty, just return
+            if cell['code'] == '':
+                return cell
+
+            # Parse the code and catch any syntax errors
+            try:
+                tree = ast.parse(cell['code'], mode='exec')
+            except SyntaxError as exc:
+                cell['messages'].append({
                     'type': 'error',
-                    'message': 'PythonContext can not compile operations of type "%s"' % type
-                }]
+                    'message': exc.message,
+                    'line': exc.lineno,
+                    'column': exc.offset
+                })
+                return cell
+
+            # Walk the AST to dtermine dependencies
+            ast_visitor = CompileAstVisitor(tree)
+            for name in ast_visitor.used:
+                if name in ast_visitor.declared or name in self._globals:
+                    continue
+                present = False
+                for input in cell['inputs']:
+                    if input.get('name') == name:
+                        present = True
+                        break
+                if not present:
+                    cell['inputs'].append({
+                        'name': name
+                    })
+
+            # Determine the output from the last statement in the AST
+            last = tree.body[-1]
+            if isinstance(last, ast.Assign):
+                for target in last.targets:
+                    if isinstance(target, ast.Name):
+                        name = target.id
+                        cell['outputs'] = [{
+                            'name': name
+                        }]
+
         except Exception as exc:
-            messages = [{
+            cell['messages'].append({
                 'type': 'error',
-                'message': str(exc)
-            }]
+                'message': str(exc),
+                'trace': self._get_trace(exc)
+            })
 
-        return {
-            'messages': messages,
-            'operation': operation
-        }
-
-    def compile_cell(self, cell):
-        inputs = {}
-        outputs = {}
-
-        # TODO: analysis of tree to determine inputs and outputs
-        # tree = ast.parse(code, mode='exec')
-
-        cell['inputs'] = inputs
-        cell['outputs'] = outputs
-        return cell, messages
+        return cell
 
     def compile_func(self, func=None, file=None, dir=None):
         """
@@ -173,7 +188,7 @@ class PythonContext(Context):
 
             # Parse function source and extract properties from the Function object
             scope = {}
-            exec_(source, scope)
+            six.exec_(source, scope)
 
             # Get name of function
             names = [key for key in scope.keys() if not key.startswith('__')]
@@ -271,51 +286,74 @@ class PythonContext(Context):
 
         return func, messages
 
-    def execute(self, code, inputs={}):
-        # Extract names and values of inputs
-        names = inputs.keys()
-        values = [unpack(package) for package in inputs.values()]
+    def execute(self, cell):
+        cell = self.compile(cell)
 
-        # Execute the code
-        errors = None
         try:
-            exec_(code, self._global_scope)
-        except:
-            errors = self._errors()
+            locals = {}
+            for input in cell['inputs']:
+                name = input.get('name')
+                value = input.get('value')
+                if not name:
+                    raise RuntimeError('Name is required for input')
+                if not value:
+                    raise RuntimeError('Value is required for input "%s"' % name)
+                if name in self._variables:
+                    value = self._variables[name]
+                else:
+                    value = self.unpack(value)
+                locals[name] = value
 
-        # Check for 'artifacts'
-        artifact = None
-        # matplotlib figure
-        figure = plt.gcf()
-        if len(figure.get_axes()):
-            artifact = figure
-            plt.clf()
+            try:
+                six.exec_(cell['code'], self._globals, locals)
+            except RuntimeError as exc:
+                cell['messages'].append(self._runtime_error(exc))
 
-        output = undefined
-        if not errors:
+            # matplotlib figure
+            #figure = plt.gcf()
+            #if len(figure.get_axes()):
+            #    output = figure
+            #     plt.clf()
+
             # Evaluate the last line and if no error then make the value output
             # This is inefficient in the sense that the last line is evaluated twice
             # but alternative approaches would appear to require some code parsing
-            last = code.split('\n')[-1]
+            last = cell['code'].split('\n')[-1]
             try:
-                output = eval(last, self._global_scope)
+                output = eval(last, self._globals, locals)
             except:
                 output = undefined
 
             # If output is undefined and there was an artifact (e.g. a matplotlib figure)
             # then use the artifact value as output
-            if output is undefined and artifact:
-                output = artifact
+            #if output is undefined and artifact:
+            #    output = artifact
 
-            # Errors should be a list
-            errors = []
+            if output is undefined and len(cell['outputs']):
+                # If the last statement was an assignment then grab that variable
+                name = cell['outputs'][0]['name']
+                if name:
+                    output = locals.get(name)
 
-        return {
-            'messages': errors,
-            'value': None if output is undefined else pack(output)
-        }
+            if output is not undefined:
+                packed = self.pack(output)
+                if len(cell['outputs']):
+                    cell['outputs'][0]['value'] = packed
+                else:
+                    cell['outputs'] = [{
+                        'value': packed
+                    }]
 
-    def _errors(self):
+        except Exception as exc:
+            cell['messages'].append({
+                'type': 'error',
+                'message': str(exc),
+                'trace': self._get_trace(exc)
+            })
+
+        return cell
+
+    def _runtime_error(self):
         exc_type, exc_value, exc_traceback = sys.exc_info()
         # Extract traceback and for compatibility with >=Py3.5 ensure converted to tuple
         frames = [tuple(frame) for frame in traceback.extract_tb(exc_traceback)]
@@ -341,30 +379,68 @@ class PythonContext(Context):
             # No trace when syntax error
             line = 0
 
-        return [{
+        return {
             'type': 'error',
             'line': line,
             'column': 0,
             'message': exc_type.__name__ + ': ' + traceback._some_str(exc_value)
-        }]
-
-    # Legacy methods
-
-    def analyseCode(self, code, exprOnly=False):
-        # TODO call self.compile
-        return {
-            'intputs': [],
-            'output': None
         }
 
-    def executeCode(self, code, inputs={}, exprOnly=False):
-        return self.execute(code, inputs)
-
+    def _get_trace(self, exc):
+        stream = io.StringIO() if six.PY3 else io.BytesIO()
+        traceback.print_exc(file=stream)
+        return stream.getvalue()
 
 PythonContext.spec = {
     'name': 'PythonContext',
     'client': 'ContextHttpClient'
 }
+
+
+class CompileAstVisitor(ast.NodeVisitor):
+    # Use ast.dump to find out about structure of node types
+    # > import ast
+    # > ast.dump(ast.parse('x=1').body[0])
+    # "Assign(targets=[Name(id='x', ctx=Store())], value=Num(n=1))"
+
+    def __init__(self, tree):
+        self.declared = []
+        self.used = []
+        self.visit(tree)
+
+    def aliases(self, aliases):
+        for alias in aliases:
+            name = alias.asname if alias.asname else alias.name
+            self.declared.append(name)
+
+    def visit_Import(self, node):
+        self.aliases(node.names)
+
+    def visit_ImportFrom(self, node):
+        self.aliases(node.names)
+
+    def visit_Global(self, node):
+        for name in node.names:
+            self.declared.append(name)
+
+    def visit_FunctionDef(self, node):
+        # Do not visit function body
+        self.declared.append(node.name)
+
+    def visit_ClassDef(self, node):
+        # Do not visit class body
+        self.declared.append(node.name)
+
+    def visit_Assign(self, node):
+        # There are various forms of assignment including
+        # attribute, subscript, list, tupe etc.
+        # We are only interested in name assignment
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                self.declared.append(target.id)
+
+    def visit_Name(self, node):
+        self.used.append(node.id)
 
 
 def trim_docstring(docstring):
