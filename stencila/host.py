@@ -382,7 +382,7 @@ class Host(object):
             'iss': self.id,
             'jit': binascii.hexlify(os.urandom(32)).decode()
         }
-        return jwt.encode(payload, key, algorithm='HS256')
+        return jwt.encode(payload, key, algorithm='HS256').decode('utf-8')
 
     def authorize_token(self, token):
         """

@@ -16,88 +16,103 @@ def request(**kwargs):
 
 
 def test_start_stop():
-    s = HostHttpServer(host)
+    server = HostHttpServer(host)
 
-    s.start()
-    assert re.match('^http://127.0.0.1', s.url)
+    server.start()
+    assert re.match('^http://127.0.0.1', server.url)
 
-    s.stop()
-    assert s.url is None
+    server.stop()
+    assert server.url is None
 
 
 def test_handle():
-    s = HostHttpServer(host)
-    c = Client(s, Response)
+    server = HostHttpServer(host)
+    client = Client(server, Response)
 
-    s.start()
+    server.start()
 
-    r = c.get('/')
-    assert r.status == '200 OK'
+    response = client.get('/')
+    assert response.status == '200 OK'
 
-    s.stop()
+    server.stop()
+
+
+def test_handle_authorization():
+    server = HostHttpServer(host)
+    client = Client(server, Response)
+
+    server.start()
+
+    response = client.post('/PythonContext')
+    assert response.status_code == 401
+
+    def auth_headers (token):
+        return {'Authorization': 'Bearer %s' % token}
+
+    token1 = host.generate_token()
+    response = client.post('/PythonContext', headers = auth_headers(token1))
+    assert response.data.decode() == '"pythonContext1"'
+    assert response.status_code == 200
+
+    server.stop()
 
 
 def test_route():
-    s = HostHttpServer(host)
+    server = HostHttpServer(host)
 
-    assert s.route('OPTIONS', None) == (s.options,)
+    assert server.route('GET', '/static/some/file.js') == ('static', 'some/file.js')
 
-    assert s.route('GET', '/static/some/file.js') == (s.static, 'some/file.js')
+    assert server.route('POST', '/type', True) == ('run', 'create', 'type')
 
-    assert s.route('POST', '/type') == (s.run, 'create', 'type')
+    assert server.route('GET', '/id', True) == ('run', 'get', 'id')
 
-    assert s.route('GET', '/id') == (s.run, 'get', 'id')
+    assert server.route('PUT', '/id!method', True) == ('run', 'call', 'id', 'method')
 
-    assert s.route('PUT', '/id!method') == (s.run, 'call', 'id', 'method')
-
-    assert s.route('DELETE', '/id') == (s.run, 'delete', 'id')
-
-
-def test_options():
-    s = HostHttpServer(host)
-
-    r = s.options(request())
-    assert r.status == '200 OK'
+    assert server.route('DELETE', '/id', True) == ('run', 'delete', 'id')
 
 
 def test_static():
-    s = HostHttpServer(host)
+    server = HostHttpServer(host)
+    req = request()
+    res = Response()
 
-    r = s.static(request(), 'logo-name-beta.svg')
-    assert r.status == '200 OK'
-    assert r.headers['content-type'] == 'image/svg+xml'
-    assert r.data.decode()[:54] == '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+    res = server.static(req, res, 'logo-name-beta.svg')
+    assert res.status == '200 OK'
+    assert res.headers['content-type'] == 'image/svg+xml'
+    assert res.data.decode()[:54] == '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
 
-    r = s.static(request(), 'foo.bar')
-    assert r.status == '404 NOT FOUND'
+    res = server.static(req, res, 'foo.bar')
+    assert res.status == '404 NOT FOUND'
 
-    r = s.static(request(), '../DESCRIPTION')
-    assert r.status == '403 FORBIDDEN'
+    res = server.static(req, res, '../DESCRIPTION')
+    assert res.status == '403 FORBIDDEN'
 
 
 def test_run():
-    s = HostHttpServer(host)
+    server = HostHttpServer(host)
+    req = request()
+    res = Response()
 
     # Create a context
-    r = s.run(request(), 'create', 'PythonContext')
-    assert r.status == '200 OK'
-    assert r.headers['content-type'] == 'application/json'
+    res = server.run(req, res, 'create', 'PythonContext')
+    assert res.status == '200 OK'
+    assert res.headers['content-type'] == 'application/json'
 
-    id = json.loads(r.data.decode())
+    id = json.loads(res.data.decode())
 
     # Get the context
-    r = s.run(request(), 'get', id)
-    assert r.status == '200 OK'
-    assert r.headers['content-type'] == 'application/json'
-    assert r.data.decode() == '{}'
+    res = server.run(req, res, 'get', id)
+    assert res.status == '200 OK'
+    assert res.headers['content-type'] == 'application/json'
+    assert res.data.decode() == '{}'
 
     # Call a context method
-    r = s.run(request(data='{"code":"6*7"}'), 'call', id, 'execute')
-    assert r.status == '200 OK'
-    assert r.headers['content-type'] == 'application/json'
-    cell = json.loads(r.data.decode())
+    res = server.run(request(data='{"code":"6*7"}'), res, 'call', id, 'execute')
+    assert res.status == '200 OK'
+    assert res.headers['content-type'] == 'application/json'
+    cell = json.loads(res.data.decode())
     assert cell['outputs'][0]['value']['data'] == 42
 
     # Delete the context
-    r = s.run(request(), 'delete', id)
-    assert r.status == '200 OK'
+    res = server.run(req, res, 'delete', id)
+    assert res.status == '200 OK'
