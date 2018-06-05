@@ -8,17 +8,28 @@
 
 ### Install
 
-This package isn't on PyPI yet, but you can install it this repository using using pip:
+This package isn't on PyPI yet, but you can install it this repository using using `pip`:
 
 ```bash
 pip install --user https://github.com/stencila/py/archive/master.zip
 ```
 
+**Note** If you have [Anaconda](https://www.anaconda.com/) installed on your system, you should install the package using the following command:
+
+```bash
+pip install https://github.com/stencila/py/archive/master.zip
+```
+
+This will install `stencila` in your Anaconda directory (where it should be), rather than in your local user Python libraries directory.
+If you don't do that (i.e. get the `stencila` package installed in your local user Python libraries), when you try to register `stencila`
+package (see below), you will get an error as your Anaconda Python will search for `stencila` and its dependencies in the Anaconda directory.   
+
+
 Then install the package so that other Stencila packages and applications can detect it:
 
 
 ```bash
-python -m stencila register"
+python -m stencila register
 ```
 
 or, for older versions of Python you may need to do:
