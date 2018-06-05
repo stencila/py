@@ -38,6 +38,18 @@ or, for older versions of Python you may need to do:
 python -c "import stencila; stencila.register()"
 ```
 
+**Note** If the default Python on your machine is Python 2.7 whilst you have Python 3.6 installed and you would like to use it with Stencila, then you need
+to install `stencila` using `pip3` and then register it explicitly using `python3`:
+
+```bash
+pip3 install --user https://github.com/stencila/py/archive/master.zip
+```
+
+```bash
+python3 -m stencila register
+```
+
+
 ### Use
 
 This package lets you run Python code (and other languages) from inside Stencila Documents. When you start the [Stencila Desktop](https://github.com/stencila/desktop), the Stencila Python package will be automatically detected by the dektop app and you'll be able to execute Python code cells from within your documents.
