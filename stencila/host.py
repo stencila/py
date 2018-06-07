@@ -50,7 +50,10 @@ class Host(object):
 
     def __init__(self):
         self._id = 'py-host-%s' % uuid.uuid4()
-        self._key = binascii.hexlify(os.urandom(64)).decode()
+        if os.environ.get('STENCILA_AUTH') == 'false':
+            self._key = ''
+        else:
+            self._key = binascii.hexlify(os.urandom(64)).decode()
         self._servers = {}
         self._started = None
         self._heartbeat = None
@@ -233,7 +236,7 @@ class Host(object):
         else:
             raise Exception('Unknown instance: %s' % name)
 
-    def start(self, address='127.0.0.1', port=2000, authorization=True, quiet=False):
+    def start(self, address='127.0.0.1', port=2000, quiet=False):
         """
         Start serving this host
 
@@ -244,7 +247,7 @@ class Host(object):
         """
         if 'http' not in self._servers:
             # Start HTTP server
-            server = HostHttpServer(self, address, port, authorization)
+            server = HostHttpServer(self, address, port)
             self._servers['http'] = server
             server.start()
 
@@ -269,7 +272,7 @@ class Host(object):
                 # Create a file handle
                 mode = stat.S_IRUSR | stat.S_IWUSR  # This is 0o600 in octal.
                 umask = 0o777 ^ mode  # Prevents always downgrading umask to 0.
-                umask_original = os.umask(0o177)  # 0o777 ^ 0o600
+                umask_original = os.umask(umask)
                 try:
                     handle = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
                 finally:
@@ -280,10 +283,13 @@ class Host(object):
                     file.write(content)
 
             write_secure(self.id + '.json', json.dumps(self.manifest(), indent=True))
-            write_secure(self.id + '.key', self.key)
+            write_secure(self.id + '.key', self._key)
 
             if not quiet:
-                print('Host has started at: %s' % self._servers['http'].url)
+                print('Host has started:')
+                print('  Id: %s' % self._id)
+                print('  Key: %s' % self._key)
+                print('  URLs: %s' % self._servers['http'].url)
 
             # On normal process exit, stop this host
             atexit.register(self.stop)
@@ -308,12 +314,12 @@ class Host(object):
             if not quiet:
                 print('Host has stopped')
 
-    def run(self, address='127.0.0.1', port=2000, authorization=True):
+    def run(self, address='127.0.0.1', port=2000):
         """
         Start serving this host and wait for connections
         indefinitely
         """
-        self.start(address=address, port=port, authorization=authorization)
+        self.start(address=address, port=port)
 
         print('Use Ctrl+C to stop')
 

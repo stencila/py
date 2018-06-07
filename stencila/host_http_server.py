@@ -66,18 +66,10 @@ class HostHttpServer(object):
 
     """
 
-    def __init__(self, host, address='127.0.0.1', port=2000, authorization=True):
+    def __init__(self, host, address='127.0.0.1', port=2000):
         self._host = host
         self._address = address
         self._port = port
-
-        auth = os.environ.get('STENCILA_AUTH')
-        if auth == 'true':
-            authorization = True
-        elif auth == 'false':
-            authorization = False
-        self._authorization = authorization
-
         self._server = None
 
     @property
@@ -156,19 +148,19 @@ class HostHttpServer(object):
             # Check authorization
             authorized = False
             if not self._host.key:
-              authorized = True
+                authorized = True
             else:
-              auth_header = request.headers.get('Authorization')
-              if auth_header:
-                match = re.match(r'^Bearer (.+)', auth_header)
-                if match:
-                  token = match.group(1)
-                  try:
-                    self._host.authorize_token(token)
-                  except Exception as exc:
-                    return self.error403(request, response, str(exc))
-                  else:
-                    authorized = True
+                auth_header = request.headers.get('Authorization')
+                if auth_header:
+                    match = re.match(r'^Bearer (.+)', auth_header)
+                    if match:
+                        token = match.group(1)
+                        try:
+                            self._host.authorize_token(token)
+                        except Exception as exc:
+                            return self.error403(request, response, str(exc))
+                        else:
+                            authorized = True
 
             # Add CORS headers used to control access by browsers. In particular, CORS
             # can prevent access by XHR requests made by Javascript in third party sites.
@@ -213,7 +205,6 @@ class HostHttpServer(object):
                     # sending another preflight request"
                     response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
 
-
             if request.method == 'OPTIONS':
                 # For preflighted CORS OPTIONS requests return an empty response with headers set
                 # (https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Preflighted_requests)
@@ -223,7 +214,7 @@ class HostHttpServer(object):
                 endpoint = self.route(request.method, request.path, authorized)
                 if not endpoint:
                     return self.error400()
-                
+
                 method_name = endpoint[0]
                 method_args = endpoint[1:]
                 method = getattr(self, method_name)
@@ -232,7 +223,7 @@ class HostHttpServer(object):
         except Exception as exc:
             return self.error500(request, response)
 
-    def route(self, verb, path, authorized = False):
+    def route(self, verb, path, authorized=False):
         """
         Route a HTTP request
         """
