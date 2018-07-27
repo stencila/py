@@ -62,12 +62,13 @@ class PythonContext(Context):
                 cell['lang'] = 'py'
 
             # If the cell's code is empty, just return
-            if cell['code'] == '':
+            code = cell['code'].strip()
+            if code == '':
                 return cell
 
             # Parse the code and catch any syntax errors
             try:
-                tree = ast.parse(cell['code'], mode='exec')
+                tree = ast.parse(code, mode='exec')
             except SyntaxError as exc:
                 cell['messages'].append({
                     'type': 'error',
@@ -304,8 +305,9 @@ class PythonContext(Context):
                     value = self.unpack(value)
                 locals[name] = value
 
+            code = cell['code'].strip()
             try:
-                six.exec_(cell['code'], self._globals, locals)
+                six.exec_(code, self._globals, locals)
             except RuntimeError as exc:
                 cell['messages'].append(self._runtime_error(exc))
 
@@ -318,7 +320,7 @@ class PythonContext(Context):
             # Evaluate the last line and if no error then make the value output
             # This is inefficient in the sense that the last line is evaluated twice
             # but alternative approaches would appear to require some code parsing
-            last = cell['code'].split('\n')[-1]
+            last = code.split('\n')[-1]
             try:
                 output = eval(last, self._globals, locals)
             except:

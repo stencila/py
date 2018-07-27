@@ -217,6 +217,11 @@ def test_execute():
         'outputs': []
     }
 
+    # Works when leading or trailing whitespace
+    assert context.execute(' 2*1')['outputs'][0]['value'] == {'data': 2, 'type': 'number'}
+    assert context.execute('\t2*2')['outputs'][0]['value'] == {'data': 4, 'type': 'number'}
+    assert context.execute('\t2*3 \t')['outputs'][0]['value'] == {'data': 6, 'type': 'number'}
+
     # Check outputs
     def check_outputs(code, inputs, outputs):
         cell = context.execute({
