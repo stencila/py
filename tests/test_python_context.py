@@ -82,18 +82,17 @@ def test_compile():
     }]
 
 
-def skip_test_compile_func():
+def test_compile_func():
     context = PythonContext()
 
     # Test general interface
 
     assert context.list(types=['function']) == []
 
-    # .. can be called with a function operation
-    operation, messages = context.compile_func({
-        'type': 'func',
-        'source': 'def hello(who="world"): return "Hello"'
-    })
+    # .. can be called with a string
+    operation, messages = context.compile_func(
+        'def hello(who="world"): return "Hello"'
+    )
     assert messages == []
     assert operation == {
         'type': 'func',
@@ -104,11 +103,6 @@ def skip_test_compile_func():
             'default': {'type': 'string', 'data': 'world'}
         }]
     }
-
-    # ...or a string
-    assert context.compile_func(
-        'def hello(who="world"): return "Hello"'
-    )[0] == operation
 
     # ...or a function object
     def hello(who="world"): return "Hello"
@@ -133,21 +127,19 @@ def skip_test_compile_func():
 
     # Test handling of errors in function source
 
-    assert context.compile({
-        'type': 'func',
-        'source': 'def syntax_err:'
-    })['messages'] == [{
-        'type': 'error',
-        'message': 'invalid syntax (<string>, line 1)'
-    }]
+    messages = context.compile({
+        'type': 'cell',
+        'code': 'def syntax_err:'
+    })['messages']
+    assert len(messages) == 1
+    #assert messages[0]['message'] == 'invalid syntax (<string>, line 1)'
 
-    assert context.compile({
-        'type': 'func',
-        'source': 'def bad_pars(*x, *y): pass'
-    })['messages'] == [{
-        'type': 'error',
-        'message': 'invalid syntax (<string>, line 1)'
-    }]
+    messages = context.compile({
+        'type': 'cell',
+        'code': 'def bad_pars(*x, *y): pass'
+    })['messages']
+    assert len(messages) == 1
+    #assert messages[0]['message'] == 'invalid syntax (<string>, line 1)'
 
     # Test parsing of parameters from source code only
 
