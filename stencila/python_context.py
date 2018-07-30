@@ -161,7 +161,7 @@ class PythonContext(Context):
             if file:
                 with open(file) as file_obj:
                     func, messages = self.compile_func({
-                        'type': 'func',
+                        'type': 'function',
                         'source': file_obj.read()
                     })
                 return func, messages
@@ -176,7 +176,7 @@ class PythonContext(Context):
         elif callable(func):
             func_obj = func
             func = {
-                'type': 'func',
+                'type': 'function',
                 'source': '\n'.join(inspect.getsourcelines(func_obj)[0]).strip()
             }
             func_name = func_obj.__code__.co_name
@@ -184,7 +184,7 @@ class PythonContext(Context):
             # If necessary, wrap string arguments into an operation dict
             if isinstance(func, str) or isinstance(func, bytes):
                 func = {
-                    'type': 'func',
+                    'type': 'function',
                     'source': func
                 }
 
@@ -283,9 +283,16 @@ class PythonContext(Context):
             if len(docstring_returns):
                 func.update({'returns': docstring_returns})
 
+        # Create methods dict
+        # FIXME: should use signature not func_name
+        methods = {}
+        methods[func_name] = {
+            'params': params
+        }
+
         func.update({
             'name': func_name,
-            'params': params
+            'methods': methods
         })
 
         # Register the function in scope
