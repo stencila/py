@@ -47,7 +47,7 @@ class PythonContext(Context):
 
     def list(self, types=[]):
         names = []
-        for name, obj in self._scope.items():
+        for name, obj in self._variables.items():
             if not len(types) or self.type(obj) in types:
                 names.append(name)
         return names
@@ -289,7 +289,7 @@ class PythonContext(Context):
         })
 
         # Register the function in scope
-        self._scope[func_name] = func_obj
+        self._variables[func_name] = func_obj
 
         return func, messages
 
