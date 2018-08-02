@@ -5,6 +5,7 @@ import string
 
 import pandas
 
+from .value import pack, unpack
 from .context import Context
 
 
@@ -96,7 +97,7 @@ class SqliteContext(Context):
                     })
                 else:
                     if value:
-                        value = self.pack(value)
+                        value = pack(value)
         else:
             messages.append({
                 'type': 'error',
@@ -120,7 +121,7 @@ class SqliteContext(Context):
         rows = self._connection.execute('SELECT count(*) FROM %s' % data).fetchone()[0]
         if rows <= max_rows:
             data_frame = pandas.read_sql_query('SELECT * FROM %s' % data, self._connection)
-            return Context.pack(data_frame)
+            return pack(data_frame)
         else:
             # Return a pointer
             return {
@@ -137,7 +138,7 @@ class SqliteContext(Context):
     def fetch(self, name, options={}):
         # TODO implement options e.g. pagination
         data_frame = pandas.read_sql_query('SELECT * FROM %s' % name, self._connection)
-        return Context.pack(data_frame)
+        return pack(data_frame)
 
 
 SqliteContext.spec = {

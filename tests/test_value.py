@@ -1,3 +1,4 @@
+import json
 import math
 
 import pytest
@@ -16,8 +17,8 @@ def test_type():
     assert type(42) == 'integer'
     assert type(1000000000) == 'integer'
 
-    assert type(3.14) == 'float'
-    assert type(1.1e-20) == 'float'
+    assert type(3.14) == 'number'
+    assert type(1.1e-20) == 'number'
 
     assert type('') == 'string'
     assert type('Yo!') == 'string'
@@ -42,26 +43,26 @@ def check(obj, type, format, data=None):
     assert p['type'] == type
     assert p['format'] == format
     if data:
-        assert p['data'] == data
+        assert p['data'] == json.loads(data)
 
 
 def test_pack_primitive_types():
-    check(None, 'null', 'text', 'null')
+    check(None, 'null', 'json', 'null')
 
-    check(True, 'boolean', 'text', 'true')
-    check(False, 'boolean', 'text', 'false')
+    check(True, 'boolean', 'json', 'true')
+    check(False, 'boolean', 'json', 'false')
 
-    check(42, 'integer', 'text', '42')
-    check(1000000000, 'integer', 'text', '1000000000')
+    check(42, 'integer', 'json', '42')
+    check(1000000000, 'integer', 'json', '1000000000')
 
-    check(3.14, 'float', 'text', '3.14')
-    check(math.pi, 'float', 'text', '3.141592653589793')
+    check(3.14, 'number', 'json', '3.14')
+    check(math.pi, 'number', 'json', '3.141592653589793')
 
-    check(1.1e20, 'float', 'text', '1.1e+20')
-    check(1.1e-20, 'float', 'text', '1.1e-20')
+    check(1.1e20, 'number', 'json', '1.1e+20')
+    check(1.1e-20, 'number', 'json', '1.1e-20')
 
-    check('', 'string', 'text', '')
-    check('Yo!', 'string', 'text', 'Yo!')
+    check('', 'string', 'json', '""')
+    check('Yo!', 'string', 'json', '"Yo!"')
 
 
 def test_pack_errors_for_unhandled_types():
@@ -91,12 +92,12 @@ def test_pack_works_for_a_data_frame():
     check(
         pandas.DataFrame({'a': [1, 2, 3]}),
         'table', 'json',
-        '{"type": "table", "data": {"a": {"type": "integer", "values": [1, 2, 3]}}}'
+        '{"type": "table", "data": {"a": [1, 2, 3]}}'
     )
     check(
         pandas.DataFrame({'a': [True, False, True], 'b': ['xx', 'yy', 'zz']}),
         'table', 'json',
-        '{"type": "table", "data": {"a": {"type": "boolean", "values": [true, false, true]}, "b": {"type": "string", "values": ["xx", "yy", "zz"]}}}'
+        '{"type": "table", "data": {"a": [true, false, true], "b": ["xx", "yy", "zz"]}}'
     )
 
 
@@ -109,12 +110,12 @@ def test_pack_works_for_plots():
     check(
         pandas.DataFrame({'a': [1, 2, 3]}),
         'table', 'json',
-        '{"type": "table", "data": {"a": {"type": "integer", "values": [1, 2, 3]}}}'
+        '{"type": "table", "data": {"a": [1, 2, 3]}}'
     )
     check(
         pandas.DataFrame({'a': [True, False, True], 'b': ['xx', 'yy', 'zz']}),
         'table', 'json',
-        '{"type": "table", "data": {"a": {"type": "boolean", "values": [true, false, true]}, "b": {"type": "string", "values": ["xx", "yy", "zz"]}}}'
+        '{"type": "table", "data": {"a": [true, false, true], "b": ["xx", "yy", "zz"]}}'
     )
 
 
@@ -149,8 +150,8 @@ def test_unpack_works_for_primitive_types():
     assert unpack({'type': 'integer', 'format': 'text', 'data': '42'}) == 42
     assert unpack({'type': 'integer', 'format': 'text', 'data': '1000000000'}) == 1000000000
 
-    assert unpack({'type': 'float', 'format': 'text', 'data': '3.12'}) == 3.12
-    assert unpack({'type': 'float', 'format': 'text', 'data': '1e20'}) == 1e20
+    assert unpack({'type': 'number', 'format': 'text', 'data': '3.12'}) == 3.12
+    assert unpack({'type': 'number', 'format': 'text', 'data': '1e20'}) == 1e20
 
     assert unpack({'type': 'string', 'format': 'text', 'data': 'Yo!'}) == 'Yo!'
 
@@ -174,8 +175,8 @@ def test_unpack_works_for_tabular_data():
     {
         "type":"table",
         "data": {
-            "a": {"type": "integer", "values": [1, 2, 3]},
-            "b": {"type": "string", "values": ["x", "y", "z"]}
+            "a": [1, 2, 3],
+            "b": ["x", "y", "z"]
         }
     }'''}).to_csv() == data.to_csv()
     assert unpack({'type': 'table', 'format': 'csv', 'data': 'a,b\n1,x\n2,y\n3,z'}).to_csv() == data.to_csv()

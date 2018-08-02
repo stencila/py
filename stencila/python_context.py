@@ -302,7 +302,7 @@ class PythonContext(Context):
                 if name in self._variables:
                     value = self._variables[name]
                 else:
-                    value = self.unpack(value)
+                    value = unpack(value)
                 locals[name] = value
 
             code = cell['code'].strip()
@@ -327,7 +327,7 @@ class PythonContext(Context):
                     output = locals.get(name)
 
             if output is not undefined:
-                packed = self.pack(output)
+                packed = pack(output)
                 if len(cell['outputs']):
                     cell['outputs'][0]['value'] = packed
                 else:

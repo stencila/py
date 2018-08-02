@@ -30,7 +30,7 @@ def type(value):
     elif type_ == 'int':
         return 'integer'
     elif type_ == 'float':
-        return 'float'
+        return 'number'
     elif type_ == 'str':
         return 'string'
     elif (
@@ -61,21 +61,19 @@ def pack(value):
     :returns: A value package
     """
     type_ = type(value)
-    format_ = 'text'
+    format_ = 'json'
 
     if value is None:
-        data = 'null'
+        data = None
     elif type_ == 'boolean':
-        data = 'true' if value else 'false'
-    elif type_ in ('integer', 'float'):
-        data = repr(value)
+        data = value
+    elif type_ in ('integer', 'number'):
+        data = value
     elif type_ == 'string':
         data = value
     elif type_ in ('array', 'object'):
-        format_ = 'json'
-        data = json.dumps(value, separators=(',', ':'))
+        data = value
     elif type_ == 'table':
-        format_ = 'json'
         columns = OrderedDict()
         for column in value.columns:
             col = value[column]
@@ -89,7 +87,7 @@ def pack(value):
                 column_type = 'integer'
                 values = [int(row) for row in values]
             elif col.dtype in (numpy.float16, numpy.float32, numpy.float64):
-                column_type = 'float'
+                column_type = 'number'
                 values = [float(row) for row in values]
             elif col.dtype in (numpy.str_, numpy.unicode_,):
                 column_type = 'string'
@@ -100,11 +98,8 @@ def pack(value):
                 }.get(__builtins__['type'](values[0]))
             else:
                 column_type = col.dtype.name
-            columns[column] = OrderedDict([
-                ('type', column_type),
-                ('values', values)
-            ])
-        data = json.dumps(OrderedDict([('type', 'table'), ('data', columns)]))
+            columns[column] = values
+        data = OrderedDict([('type', 'table'), ('data', columns)])
     elif type_ == 'matplotlib':
         image = BytesIO()
         matplotlib.pyplot.savefig(image, format='png')
@@ -143,7 +138,7 @@ def unpack(pkg):
         return data == 'true'
     elif type_ == 'integer':
         return int(data)
-    elif type_ == 'float':
+    elif type_ == 'number':
         return float(data)
     elif type_ == 'string':
         return data
@@ -154,7 +149,7 @@ def unpack(pkg):
             table = json.loads(data, object_pairs_hook=OrderedDict)
             dataframe = pandas.DataFrame()
             for name, column in table['data'].items():
-                dataframe[name] = column['values']
+                dataframe[name] = column
             return dataframe
         elif format in ('csv', 'tsv'):
             sep = ',' if format == 'csv' else '\t'

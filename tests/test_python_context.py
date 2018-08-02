@@ -218,9 +218,9 @@ def test_execute():
     }
 
     # Works when leading or trailing whitespace
-    assert context.execute(' 2*1')['outputs'][0]['value'] == {'data': 2, 'type': 'number'}
-    assert context.execute('\t2*2')['outputs'][0]['value'] == {'data': 4, 'type': 'number'}
-    assert context.execute('\t2*3 \t')['outputs'][0]['value'] == {'data': 6, 'type': 'number'}
+    assert context.execute(' 2*1')['outputs'][0]['value'] == {'data': 2, 'format': 'json', 'type': 'integer'}
+    assert context.execute('\t2*2')['outputs'][0]['value'] == {'data': 4, 'format': 'json', 'type': 'integer'}
+    assert context.execute('\t2*3 \t')['outputs'][0]['value'] == {'data': 6, 'format': 'json', 'type': 'integer'}
 
     # Check outputs
     def check_outputs(code, inputs, outputs):
@@ -232,19 +232,19 @@ def test_execute():
         assert cell['outputs'] == outputs
 
     check_outputs('1.0', [], [{
-        'value': {'type': 'number', 'data': 1}
+        'value': {'type': 'number', 'format': 'json', 'data': 1}
     }])
 
-    check_outputs('x = 3', [], [{
+    check_outputs('x = 3.1', [], [{
         'name':  'x',
-        'value': {'type': 'number', 'data': 3}
+        'value': {'type': 'number', 'format': 'json', 'data': 3.1}
     }])
 
     check_outputs('x * 2', [{
         'name': 'x',
-        'value': {'type': 'number', 'data': 1.1}
+        'value': {'type': 'number', 'format': 'json', 'data': 1.1}
     }], [{
-        'value': {'type': 'number', 'data': 2.2}
+        'value': {'type': 'number', 'format': 'json', 'data': 2.2}
     }])
 
     return
