@@ -72,9 +72,9 @@ class PythonContext(Context):
             except SyntaxError as exc:
                 cell['messages'].append({
                     'type': 'error',
-                    'message': exc.message,
-                    'line': exc.lineno,
-                    'column': exc.offset
+                    'message': str(exc),
+                    'line': getattr(exc, 'lineno', 0),
+                    'column': getattr(exc, 'offset', 0)
                 })
                 return cell
 

@@ -61,6 +61,14 @@ def test_compile():
     check_outputs('x()', [])
     check_outputs('x = 1', [{'name': 'x'}])
 
+    # Check syntax errors
+    assert context.compile('[1,2')['messages'] == [{
+        'type': 'error',
+        'message': 'unexpected EOF while parsing (<unknown>, line 1)',
+        'line': 1,
+        'column': 5
+    }]
+
 
 def skip_test_compile_func():
     context = PythonContext()
