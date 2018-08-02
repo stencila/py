@@ -311,12 +311,6 @@ class PythonContext(Context):
             except RuntimeError as exc:
                 cell['messages'].append(self._runtime_error(exc))
 
-            # matplotlib figure
-            #figure = plt.gcf()
-            #if len(figure.get_axes()):
-            #    output = figure
-            #     plt.clf()
-
             # Evaluate the last line and if no error then make the value output
             # This is inefficient in the sense that the last line is evaluated twice
             # but alternative approaches would appear to require some code parsing
@@ -325,11 +319,6 @@ class PythonContext(Context):
                 output = eval(last, self._globals, locals)
             except:
                 output = undefined
-
-            # If output is undefined and there was an artifact (e.g. a matplotlib figure)
-            # then use the artifact value as output
-            #if output is undefined and artifact:
-            #    output = artifact
 
             if output is undefined and len(cell['outputs']):
                 # If the last statement was an assignment then grab that variable
@@ -345,6 +334,10 @@ class PythonContext(Context):
                     cell['outputs'] = [{
                         'value': packed
                     }]
+
+            # Clear the current matplot figure (if any)
+            # after any plot has been packed as an output
+            plt.clf()
 
         except Exception as exc:
             cell['messages'].append({
