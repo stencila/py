@@ -51,6 +51,10 @@ def test_compile():
     check_inputs('global foo\nfoo', [])
     check_inputs('global foo, bar\nfoo * bar', [])
 
+    # Check built-in functions are not treated as inputs
+    check_inputs('print(42)', [])
+    check_inputs('range(10)', [])
+
     # Check outputs
     def check_outputs(code, outputs):
         cell = context.compile(code)

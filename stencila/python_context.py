@@ -23,6 +23,14 @@ from .context import Context
 
 undefined = object()
 
+# Global variables that are always available regardless of what
+# modules haved been `imported`
+#
+# See https://stackoverflow.com/a/28050317/4625911 for why
+# to use `builtins` modules instead of `__builtin__`
+from six.moves import builtins
+GLOBALS = dir(builtins)
+
 
 class PythonContext(Context):
 
@@ -31,8 +39,6 @@ class PythonContext(Context):
 
         if self._dir:
             os.chdir(self._dir)
-
-        self._globals = {}
 
         self._variables = {}
 
@@ -81,7 +87,7 @@ class PythonContext(Context):
             # Walk the AST to dtermine dependencies
             ast_visitor = CompileAstVisitor(tree)
             for name in ast_visitor.used:
-                if name in ast_visitor.declared or name in self._globals:
+                if name in ast_visitor.declared or name in GLOBALS:
                     continue
                 present = False
                 for input in cell['inputs']:
@@ -307,7 +313,7 @@ class PythonContext(Context):
 
             code = cell['code'].strip()
             try:
-                six.exec_(code, self._globals, locals)
+                six.exec_(code, {}, locals)
             except RuntimeError as exc:
                 cell['messages'].append(self._runtime_error(exc))
 
@@ -316,7 +322,7 @@ class PythonContext(Context):
             # but alternative approaches would appear to require some code parsing
             last = code.split('\n')[-1]
             try:
-                output = eval(last, self._globals, locals)
+                output = eval(last, {}, locals)
             except:
                 output = undefined
 
