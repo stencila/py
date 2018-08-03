@@ -67,6 +67,7 @@ def test_compile():
     check_outputs('x', [])
     check_outputs('x()', [])
     check_outputs('x = 1', [{'name': 'x'}])
+    check_outputs('def func(): pass', [{'name': 'func'}])
 
     # Check input and outputs
     cell = context.compile('x = 1 + y + z')
@@ -124,6 +125,20 @@ def test_execute():
         'value': {'type': 'number', 'format': 'json', 'data': 1.1}
     }], [{
         'value': {'type': 'number', 'format': 'json', 'data': 2.2}
+    }])
+
+    check_outputs('def myfunc(): pass', [], [{
+        'name':  'myfunc',
+        'value': {
+            'type': 'function',
+            'format': 'json',
+            'data': {
+                'name': 'myfunc',
+                'methods': {
+                    'myfunc': {'params': []}
+                }
+            }
+        }
     }])
 
     return

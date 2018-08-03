@@ -150,10 +150,7 @@ def pack_function(func=None, file=None, dir=None):
     if func is None:
         if file:
             with open(file) as file_obj:
-                func = pack_function({
-                    'type': 'function',
-                    'source': file_obj.read()
-                })
+                func = pack_function(file_obj.read())
             return func
         elif dir:
             count = 0
@@ -166,24 +163,12 @@ def pack_function(func=None, file=None, dir=None):
     elif callable(func):
         func_obj = func
         func = {
-            'type': 'function',
-            'source': '\n'.join(inspect.getsourcelines(func_obj)[0]).strip()
+            'type': 'function'
         }
         func_name = func_obj.__code__.co_name
-    else:
-        # If necessary, wrap string arguments into an operation dict
-        if isinstance(func, str) or isinstance(func, bytes):
-            func = {
-                'type': 'function',
-                'source': func
-            }
-
-        # Obtain source code
-        source = func.get('source')
-        if not source:
-            raise RuntimeError('Not function source code specified in `source` or `file` properties')
-
+    elif isinstance(func, str) or isinstance(func, bytes):
         # Parse function source and extract properties from the Function object
+        source = func
         scope = {}
         six.exec_(source, scope)
 
@@ -196,6 +181,12 @@ def pack_function(func=None, file=None, dir=None):
             })
         func_name = names[-1]
         func_obj = scope[func_name]
+
+        func = {
+            'type': 'function'
+        }
+    else:
+        raise RuntimeError('Unhandled type')
 
     # Extract parameter specifications
     func_spec = inspect.getargspec(func_obj)

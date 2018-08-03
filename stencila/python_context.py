@@ -104,6 +104,10 @@ class PythonContext(Context):
                         cell['outputs'] = [{
                             'name': name
                         }]
+            elif isinstance(last, ast.FunctionDef):
+                cell['outputs'] = [{
+                    'name': last.name
+                }]
 
         except Exception as exc:
             cell['messages'].append({
