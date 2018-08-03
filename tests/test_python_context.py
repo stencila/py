@@ -120,11 +120,14 @@ def test_execute():
         'value': {'type': 'number', 'format': 'json', 'data': 3.1}
     }])
 
-    check_outputs('x * 2', [{
+    check_outputs('x * y', [{
         'name': 'x',
-        'value': {'type': 'number', 'format': 'json', 'data': 1.1}
+        'value': {'type': 'number', 'format': 'json', 'data': 0}
+    }, {
+        'name': 'y',
+        'value': {'type': 'number', 'format': 'json', 'data': 2}
     }], [{
-        'value': {'type': 'number', 'format': 'json', 'data': 2.2}
+        'value': {'type': 'number', 'format': 'json', 'data': 6.2}
     }])
 
     check_outputs('def myfunc(): pass', [], [{
@@ -172,3 +175,27 @@ def test_execute():
     error = result['messages'][0]
     assert error['line'] == 0
     assert error['message'][:-19] == "SyntaxError: invalid syntax"
+
+
+def test_imports():
+    context = PythonContext()
+
+    cell1 = context.execute('import pandas as pd')
+    assert cell1['messages'] == []
+
+    # Cell output is `pd`, an alias for `pandas` module
+    pd = cell1['outputs'][0]['value']
+    assert pd['type'] == 'module'
+
+    # This can be used as an input into other cells
+    cell2 = context.execute({
+        'code': 'pd.__version__',
+        'inputs': [{
+            'name': 'pd',
+            'value': pd
+        }]
+    })
+    assert cell2['messages'] == []
+
+    import pandas
+    assert cell2['outputs'][0]['value']['data'] == pandas.__version__

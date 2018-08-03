@@ -97,16 +97,26 @@ class PythonContext(Context):
 
             # Determine the output from the last statement in the AST
             last = tree.body[-1]
+            output_name = None
             if isinstance(last, ast.Assign):
                 for target in last.targets:
                     if isinstance(target, ast.Name):
-                        name = target.id
-                        cell['outputs'] = [{
-                            'name': name
-                        }]
-            elif isinstance(last, ast.FunctionDef):
+                        output_name = target.id
+            elif (
+                isinstance(last, ast.FunctionDef) or
+                isinstance(last, ast.ClassDef)
+            ):
+                output_name = last.name
+            elif (
+                isinstance(last, ast.Import) or
+                isinstance(last, ast.ImportFrom)
+            ):
+                import_name = last.names[0]
+                output_name = import_name.asname if import_name.asname else import_name.name
+
+            if output_name:
                 cell['outputs'] = [{
-                    'name': last.name
+                    'name': output_name
                 }]
 
         except Exception as exc:
@@ -122,7 +132,7 @@ class PythonContext(Context):
         cell = self.compile(cell)
 
         try:
-            locals = {}
+            inputs = {}
             for input in cell['inputs']:
                 name = input.get('name')
                 value = input.get('value')
@@ -130,15 +140,23 @@ class PythonContext(Context):
                     raise RuntimeError('Name is required for input')
                 if not value:
                     raise RuntimeError('Value is required for input "%s"' % name)
+
                 if name in self._variables:
-                    value = self._variables[name]
+                    # Variable name exists in the current context so check
+                    # if it needs to be overriden due to changed ownership
+                    value_data = value.get('data')
+                    if value_data:
+                        value_id = value_data.get('id')
+                        variable_id = str(id(self._variables.get(name)))
+                        if value_id != variable_id:
+                            del self._variables[name]
+                            inputs[name] = unpack(value)
                 else:
-                    value = unpack(value)
-                locals[name] = value
+                    inputs[name] = unpack(value)
 
             code = cell['code'].strip()
             try:
-                six.exec_(code, {}, locals)
+                six.exec_(code, inputs, self._variables)
             except RuntimeError as exc:
                 cell['messages'].append(self._runtime_error(exc))
 
@@ -147,7 +165,7 @@ class PythonContext(Context):
             # but alternative approaches would appear to require some code parsing
             last = code.split('\n')[-1]
             try:
-                output = eval(last, {}, locals)
+                output = eval(last, inputs, self._variables)
             except:
                 output = undefined
 
@@ -155,7 +173,7 @@ class PythonContext(Context):
                 # If the last statement was an assignment then grab that variable
                 name = cell['outputs'][0]['name']
                 if name:
-                    output = locals.get(name)
+                    output = self._variables.get(name)
 
             if output is not undefined:
                 packed = pack(output)
@@ -166,7 +184,7 @@ class PythonContext(Context):
                         'value': packed
                     }]
 
-            # Clear the current matplot figure (if any)
+            # Clear the current matplotlib figure (if any)
             # after any plot has been packed as an output
             plt.clf()
 

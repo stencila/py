@@ -37,7 +37,7 @@ def type(value):
         return 'integer'
     elif type_ == 'float':
         return 'number'
-    elif type_ == 'str':
+    elif type_ == 'str' or type_ == 'unicode':
         return 'string'
     elif (
         isinstance(value, (matplotlib.figure.Figure, matplotlib.artist.Artist)) or
@@ -55,6 +55,8 @@ def type(value):
         return 'object'
     elif isinstance(value, pandas.DataFrame):
         return 'table'
+    elif type_ == 'module':
+        return 'module'
     elif callable(value):
         return 'function'
     else:
@@ -83,6 +85,8 @@ def pack(value):
         data = value
     elif type_ == 'function':
         return pack_function(value)
+    elif type_ == 'module':
+        return pack_module(value)
     elif type_ == 'table':
         columns = OrderedDict()
         for column in value.columns:
@@ -273,6 +277,7 @@ def pack_function(func=None, file=None, dir=None):
 
     func = {
         'name': func_name,
+        'id': str(id(func_obj)),
         'methods': methods
     }
 
@@ -308,6 +313,15 @@ def trim_docstring(docstring):
         trimmed.pop(0)
     # Return a single string:
     return '\n'.join(trimmed)
+
+
+def pack_module(value):
+    return {
+        'type': 'module',
+        'data': {
+            'id': str(id(value))
+        }
+    }
 
 
 def unpack(pkg):
