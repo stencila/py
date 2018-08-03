@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import json
 import math
 
@@ -171,14 +172,13 @@ def test_unpack_works_for_arrays():
 def test_unpack_works_for_tabular_data():
     data = pandas.DataFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})
 
-    assert unpack({'type': 'table', 'format': 'json', 'data': '''
-    {
-        "type":"table",
-        "data": {
-            "a": [1, 2, 3],
-            "b": ["x", "y", "z"]
-        }
-    }'''}).to_csv() == data.to_csv()
+    assert unpack({'type': 'table', 'format': 'json', 'data': {
+        "type": "table",
+        "data": OrderedDict((
+            ("a", [1, 2, 3]),
+            ("b", ["x", "y", "z"])
+        ))
+    }}).to_csv() == data.to_csv()
     assert unpack({'type': 'table', 'format': 'csv', 'data': 'a,b\n1,x\n2,y\n3,z'}).to_csv() == data.to_csv()
     assert unpack({'type': 'table', 'format': 'tsv', 'data': 'a\tb\n1\tx\n2\ty\n3\tz'}).to_csv() == data.to_csv()
 
