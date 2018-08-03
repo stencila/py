@@ -1,16 +1,12 @@
 import ast
 import io
-import inspect
-import glob
 import os
-import re
 import six
-import sphinxcontrib.napoleon
-import sphinxcontrib.napoleon.docstring
 import sys
 import traceback
 
 from .value import pack, unpack
+from .value import type as type_
 
 import numpy
 import pandas
@@ -47,8 +43,8 @@ class PythonContext(Context):
 
     def list(self, types=[]):
         names = []
-        for name, obj in self._scope.items():
-            if not len(types) or self.type(obj) in types:
+        for name, obj in self._variables.items():
+            if not len(types) or type_(obj) in types:
                 names.append(name)
         return names
 
@@ -108,6 +104,10 @@ class PythonContext(Context):
                         cell['outputs'] = [{
                             'name': name
                         }]
+            elif isinstance(last, ast.FunctionDef):
+                cell['outputs'] = [{
+                    'name': last.name
+                }]
 
         except Exception as exc:
             cell['messages'].append({
@@ -117,181 +117,6 @@ class PythonContext(Context):
             })
 
         return cell
-
-    def compile_func(self, func=None, file=None, dir=None):
-        """
-        Compile a ``func`` operation
-
-        Parses the source of the function (either a string or a file
-        path) to extract it's ``description``, ``param``, ``return`` etc
-        properties.
-
-        >>> context.compile_func({
-        >>>     'type': 'func',
-        >>>     'source': 'def hello(who): return "Hello Hello %s!" % who'
-        >>> })
-        {
-            'type': 'func',
-            'name': 'hello',
-            'source': 'def hello(): return "Hello Hello %s!" % who'
-            'params': [{
-                'name': 'who'
-            }],
-            ...
-        }
-
-
-        Parameters
-        ----------
-            func : dict or string
-                A ``func`` operation. If a string is supplied then an operation
-                object is created with the ``source`` property set to
-                the string.
-
-        Returns
-        -------
-            func : dict
-                The compiled ``func`` operation
-            messages : list
-                A list of messages (e.g errors)
-        """
-        messages = []
-
-        if func is None:
-            if file:
-                with open(file) as file_obj:
-                    func, messages = self.compile_func({
-                        'type': 'func',
-                        'source': file_obj.read()
-                    })
-                return func, messages
-            elif dir:
-                count  =0
-                for file in glob.glob(dir + '/*.py'):
-                    self.compile_func(file=file)
-                    count += 1
-                return count
-            else:
-                raise RuntimeError('No function provided to compile!')
-        elif callable(func):
-            func_obj = func
-            func = {
-                'type': 'func',
-                'source': '\n'.join(inspect.getsourcelines(func_obj)[0]).strip()
-            }
-            func_name = func_obj.__code__.co_name
-        else:
-            # If necessary, wrap string arguments into an operation dict
-            if isinstance(func, str) or isinstance(func, bytes):
-                func = {
-                    'type': 'func',
-                    'source': func
-                }
-
-            # Obtain source code
-            source = func.get('source')
-            if not source:
-                raise RuntimeError('Not function source code specified in `source` or `file` properties')
-
-            # Parse function source and extract properties from the Function object
-            scope = {}
-            six.exec_(source, scope)
-
-            # Get name of function
-            names = [key for key in scope.keys() if not key.startswith('__')]
-            if len(names) > 1:
-                messages.append({
-                    'type': 'warning',
-                    'message': 'More than one function or object defining in function source: %s' % names
-                })
-            func_name = names[-1]
-            func_obj = scope[func_name]
-
-        # Extract parameter specifications
-        func_spec = inspect.getargspec(func_obj)
-        args = func_spec.args
-        if func_spec.varargs:
-            args.append(func_spec.varargs)
-        if func_spec.keywords:
-            args.append(func_spec.keywords)
-        params = []
-        for index, name in enumerate(args):
-            param = {
-                'name': name
-            }
-            if name == func_spec.varargs:
-                param['repeat'] = True
-            elif name == func_spec.keywords:
-                param['extend'] = True
-            if func_spec.defaults:
-                defaults_index = len(args) - len(func_spec.defaults) + index
-                if defaults_index > -1:
-                    default = func_spec.defaults[defaults_index]
-                    param['default'] = {
-                        'type': Context.type(default),
-                        'data': default
-                    }
-            params.append(param)
-
-        # Get docstring and parse it for extra parameter specs
-        docstring = func_obj.__doc__
-        docstring_params = {}
-        docstring_returns = {}
-        if docstring:
-            docstring = trim_docstring(docstring)
-            config = sphinxcontrib.napoleon.Config(napoleon_use_param=True, napoleon_use_rtype=True)
-            docstring = sphinxcontrib.napoleon.docstring.NumpyDocstring(docstring, config, what='function').lines()
-            docstring = sphinxcontrib.napoleon.docstring.GoogleDocstring(docstring, config, what='function').lines()
-
-            summary = docstring[0]
-            description = ''
-            pattern = re.compile(r'^:(param|returns|type|rtype)(\s+(\w+))?:(.*)$')
-            for line in docstring[1:]:
-                match = pattern.match(line)
-                if match:
-                    type = match.group(1)
-                    name = match.group(3)
-                    desc = match.group(4).strip()
-                    if type == 'param':
-                        param = docstring_params.get(name, {})
-                        param['description'] = desc
-                        docstring_params[name] = param
-                    elif type == 'type':
-                        param = docstring_params.get(name, {})
-                        param['type'] = desc
-                        docstring_params[name] = param
-                    elif type == 'returns':
-                        docstring_returns['description'] = desc
-                    elif type == 'rtype':
-                        docstring_returns['type'] = desc
-                else:
-                    description += line + '\n'
-            description = description.strip()
-
-            if len(summary):
-                func.update({'summary': summary})
-
-            if len(description):
-                func.update({'description': description})
-
-            for name, spec in docstring_params.items():
-                for index, param in enumerate(params):
-                    if param['name'] == name:
-                        params[index].update(spec)
-                        break
-
-            if len(docstring_returns):
-                func.update({'returns': docstring_returns})
-
-        func.update({
-            'name': func_name,
-            'params': params
-        })
-
-        # Register the function in scope
-        self._scope[func_name] = func_obj
-
-        return func, messages
 
     def execute(self, cell):
         cell = self.compile(cell)
@@ -455,30 +280,3 @@ class CompileAstVisitor(ast.NodeVisitor):
 
     def visit_Name(self, node):
         self.used.append(node.id)
-
-
-def trim_docstring(docstring):
-    """From https://www.python.org/dev/peps/pep-0257/"""
-    if not docstring:
-        return ''
-    # Convert tabs to spaces (following the normal Python rules)
-    # and split into a list of lines:
-    lines = docstring.expandtabs().splitlines()
-    # Determine minimum indentation (first line doesn't count):
-    indent = sys.maxsize
-    for line in lines[1:]:
-        stripped = line.lstrip()
-        if stripped:
-            indent = min(indent, len(line) - len(stripped))
-    # Remove indentation (first line is special):
-    trimmed = [lines[0].strip()]
-    if indent < sys.maxsize:
-        for line in lines[1:]:
-            trimmed.append(line[indent:].rstrip())
-    # Strip off trailing and leading blank lines:
-    while trimmed and not trimmed[-1]:
-        trimmed.pop()
-    while trimmed and not trimmed[0]:
-        trimmed.pop(0)
-    # Return a single string:
-    return '\n'.join(trimmed)

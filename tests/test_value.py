@@ -1,12 +1,13 @@
 from collections import OrderedDict
 import json
+import os
 import math
 
 import pytest
 import pandas
 import matplotlib.pyplot as plt
 
-from stencila.value import type, pack, unpack
+from stencila.value import type, pack, pack_function, unpack
 
 
 def test_type():
@@ -68,7 +69,7 @@ def test_pack_primitive_types():
 
 def test_pack_errors_for_unhandled_types():
     with pytest.raises(Exception):
-        pack(lambda x: x)
+        pack(set())
 
 
 def test_pack_works_for_dicts():
@@ -118,6 +119,133 @@ def test_pack_works_for_plots():
         'table', 'json',
         '{"type": "table", "data": {"a": [true, false, true], "b": ["xx", "yy", "zz"]}}'
     )
+
+
+def test_pack_function():
+    # Test general interface
+
+    # .. can be called with a string
+    pkg = pack_function('def hello(who="world"): return "Hello"')
+    assert pkg == {
+        'type': 'function',
+        'format': 'json',
+        'data': {
+            'name': 'hello',
+            'methods': {
+                'hello': {
+                    'params': [{
+                        'name': 'who',
+                        'default': {'type': 'string', 'data': 'world'}
+                    }]
+                }
+            }
+        }
+    }
+
+    # ...or a function object
+    def hello(who="world"): return "Hello"
+    assert pack_function(hello) == pkg
+
+    # ...or a file
+    path = os.path.join(os.path.dirname(__file__), 'fixtures', 'funcs', 'hello.py')
+    assert pack_function(file=path) == pkg
+
+    # ...or a directory
+    #path = os.path.join(os.path.dirname(__file__), 'fixtures', 'funcs')
+    #count = pack_function(dir=path)
+    #assert count == 2
+
+    # FIXME: currently skipping the remaining tests!
+    return
+
+    # Test handling of errors in function source
+
+    messages = context.compile({
+        'type': 'cell',
+        'code': 'def syntax_err:'
+    })['messages']
+    assert len(messages) == 1
+    assert messages[0]['message'] == 'invalid syntax (<string>, line 1)'
+
+    messages = context.compile({
+        'type': 'cell',
+        'code': 'def bad_pars(*x, *y): pass'
+    })['messages']
+    assert len(messages) == 1
+    assert messages[0]['message'] == 'invalid syntax (<string>, line 1)'
+
+    # Test parsing of parameters from source code only
+
+    assert pack_function('def no_arg(): pass')[0]['params'] == []
+
+    assert pack_function('def one_arg(x): pass')[0]['params'] == [{
+        'name': 'x'
+    }]
+
+    assert pack_function('def defaults(x=42, y=None): pass')[0]['params'] == [{
+        'name': 'x',
+        'default': {
+            'type': 'integer',
+            'data': 42
+        }
+    }, {
+        'name': 'y',
+        'default': {
+            'type': 'null',
+            'data': None
+        }
+    }]
+
+    assert pack_function('def two_args(x, y): pass')[0]['params'] == [{
+        'name': 'x'
+    }, {
+        'name': 'y'
+    }]
+
+    assert pack_function('def arg_repeats(*x): pass')[0]['params'] == [{
+        'name': 'x',
+        'repeat': True
+    }]
+
+    assert pack_function('def arg_repeats(*x, **y): pass')[0]['params'] == [{
+        'name': 'x',
+        'repeat': True
+    }, {
+        'name': 'y',
+        'extend': True
+    }]
+
+    # Test parsing of docstring
+    func = pack_function('''
+def func(x, y):
+    """Summary
+
+    Description of function
+
+    Args:
+        x (integer) : A Google style parameter spec
+
+    Returns
+    -------
+    string
+        A NumPy style return spec
+
+    """
+    pass
+''')[0]
+    assert func['summary'] == 'Summary'
+    assert func['description'] == 'Description of function'
+    assert func['params'] == [{
+        'name': 'x',
+        'description': 'A Google style parameter spec',
+        'type': 'integer'
+    }, {
+        'name': 'y'
+    }]
+    assert func['returns'] == {
+        'description': 'A NumPy style return spec',
+        'type': 'string'
+    }
 
 
 def test_unpack_can_take_a_list_or_a_JSON_string():
