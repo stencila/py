@@ -18,10 +18,8 @@ build:
 .PHONY: build
 
 install:
-	# Force reinstall of stencila from current source
-	# in this directory.
-	pip3 uninstall --yes stencila
-	pip3 install --user .
+	# Install Stencila from current source in this directory.
+	pip3 install --user --upgrade .
 	python3 -m stencila register
 
 lint:
