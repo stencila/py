@@ -11,19 +11,18 @@
 This package isn't on PyPI yet, but you can install it this repository using using `pip`:
 
 ```bash
-pip install --user https://github.com/stencila/py/archive/master.zip
+pip install --user --upgrade https://github.com/stencila/py/archive/master.zip
 ```
 
 **Note** If you have [Anaconda](https://www.anaconda.com/) installed on your system, you should install the package using the following command:
 
 ```bash
-pip install https://github.com/stencila/py/archive/master.zip
+pip install --upgrade https://github.com/stencila/py/archive/master.zip
 ```
 
 This will install `stencila` in your Anaconda directory (where it should be), rather than in your local user Python libraries directory.
 If you don't do that (i.e. get the `stencila` package installed in your local user Python libraries), when you try to register `stencila`
 package (see below), you will get an error as your Anaconda Python will search for `stencila` and its dependencies in the Anaconda directory.   
-
 
 Then install the package so that other Stencila packages and applications can detect it:
 
@@ -38,11 +37,10 @@ or, for older versions of Python you may need to do:
 python -c "import stencila; stencila.register()"
 ```
 
-**Note** If the default Python on your machine is Python 2.7 whilst you have Python 3.6 installed and you would like to use it with Stencila, then you need
-to install `stencila` using `pip3` and then register it explicitly using `python3`:
+**Note** If the default Python on your machine is Python 2.7 but you have Python 3.x also installed and would like to use that version with Stencila, then you need to install `stencila` using `pip3` and register it explicitly using `python3`:
 
 ```bash
-pip3 install --user https://github.com/stencila/py/archive/master.zip
+pip3 install --user --upgrade https://github.com/stencila/py/archive/master.zip
 ```
 
 ```bash
