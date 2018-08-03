@@ -88,6 +88,11 @@ def pack(value):
     elif type_ == 'module':
         return pack_module(value)
     elif type_ == 'table':
+        # It is necessary to remove NANs before serialising
+        # as JSON. See https://stackoverflow.com/a/34467382
+        # for why we need to do this and why we used this approach
+        value = value.where(pandas.notnull(value), None)
+
         columns = OrderedDict()
         for column in value.columns:
             col = value[column]

@@ -130,6 +130,8 @@ def test_execute():
         'value': {'type': 'number', 'format': 'json', 'data': 6.2}
     }])
 
+    return
+
     check_outputs('def myfunc(): pass', [], [{
         'name':  'myfunc',
         'value': {
@@ -143,8 +145,6 @@ def test_execute():
             }
         }
     }])
-
-    return
 
     assert context.execute('x = 42') == {'messages': [], 'value': None}
 
