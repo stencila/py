@@ -55,6 +55,9 @@ def test_compile():
     check_inputs('print(42)', [])
     check_inputs('range(10)', [])
 
+    # Check for loop variable is not treated as an input
+    check_inputs('for i in range(10): print(i)', [])
+
     # Check outputs
     def check_outputs(code, outputs):
         cell = context.compile(code)

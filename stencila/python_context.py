@@ -440,6 +440,17 @@ class CompileAstVisitor(ast.NodeVisitor):
             if isinstance(target, ast.Name):
                 self.declared.append(target.id)
 
+    def visit_For(self, node):
+        """
+        Visit a `For` node
+
+        At present, don't visit it, avoiding the
+        `target` (ie the itertor variable) being treated
+        as an input. In the future this should be fixed
+        so that proper, variable scoping is accounted for.
+        """
+        return
+
     def visit_Name(self, node):
         self.used.append(node.id)
 
