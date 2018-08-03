@@ -9,9 +9,15 @@ import json
 from io import BytesIO
 from collections import OrderedDict
 
+import inspect
+import glob
+import re
+import sphinxcontrib.napoleon
+import sphinxcontrib.napoleon.docstring
 import matplotlib
 import numpy
 import pandas
+import six
 
 
 def type(value):
@@ -49,8 +55,10 @@ def type(value):
         return 'object'
     elif isinstance(value, pandas.DataFrame):
         return 'table'
+    elif callable(value):
+        return 'function'
     else:
-        raise RuntimeError('Unable to pack object\n  type: ' + type_)
+        raise RuntimeError('Unhandled Python type: ' + type_)
 
 
 def pack(value):
@@ -73,6 +81,8 @@ def pack(value):
         data = value
     elif type_ in ('array', 'object'):
         data = value
+    elif type_ == 'function':
+        return pack_function(value)
     elif type_ == 'table':
         columns = OrderedDict()
         for column in value.columns:
@@ -110,6 +120,203 @@ def pack(value):
         raise RuntimeError('Unable to pack object\n  type: ' + type_)
 
     return {'type': type_, 'format': format_, 'data': data}
+
+
+def pack_function(func=None, file=None, dir=None):
+    """
+    Pack a function object
+
+    Parses the source of the function (either a string or a file
+    path) to extract it's ``description``, ``param``, ``return`` etc
+    properties.
+
+
+    Parameters
+    ----------
+        func : dict or string
+            A ``func`` operation. If a string is supplied then an operation
+            object is created with the ``source`` property set to
+            the string.
+
+    Returns
+    -------
+        func : dict
+            The compiled ``func`` operation
+        messages : list
+            A list of messages (e.g errors)
+    """
+    messages = []
+
+    if func is None:
+        if file:
+            with open(file) as file_obj:
+                func = pack_function({
+                    'type': 'function',
+                    'source': file_obj.read()
+                })
+            return func
+        elif dir:
+            count = 0
+            for file in glob.glob(dir + '/*.py'):
+                pack_function(file=file)
+                count += 1
+            return count
+        else:
+            raise RuntimeError('No function provided to compile!')
+    elif callable(func):
+        func_obj = func
+        func = {
+            'type': 'function',
+            'source': '\n'.join(inspect.getsourcelines(func_obj)[0]).strip()
+        }
+        func_name = func_obj.__code__.co_name
+    else:
+        # If necessary, wrap string arguments into an operation dict
+        if isinstance(func, str) or isinstance(func, bytes):
+            func = {
+                'type': 'function',
+                'source': func
+            }
+
+        # Obtain source code
+        source = func.get('source')
+        if not source:
+            raise RuntimeError('Not function source code specified in `source` or `file` properties')
+
+        # Parse function source and extract properties from the Function object
+        scope = {}
+        six.exec_(source, scope)
+
+        # Get name of function
+        names = [key for key in scope.keys() if not key.startswith('__')]
+        if len(names) > 1:
+            messages.append({
+                'type': 'warning',
+                'message': 'More than one function or object defining in function source: %s' % names
+            })
+        func_name = names[-1]
+        func_obj = scope[func_name]
+
+    # Extract parameter specifications
+    func_spec = inspect.getargspec(func_obj)
+    args = func_spec.args
+    if func_spec.varargs:
+        args.append(func_spec.varargs)
+    if func_spec.keywords:
+        args.append(func_spec.keywords)
+    params = []
+    for index, name in enumerate(args):
+        param = {
+            'name': name
+        }
+        if name == func_spec.varargs:
+            param['repeat'] = True
+        elif name == func_spec.keywords:
+            param['extend'] = True
+        if func_spec.defaults:
+            defaults_index = len(args) - len(func_spec.defaults) + index
+            if defaults_index > -1:
+                default = func_spec.defaults[defaults_index]
+                param['default'] = {
+                    'type': type(default),
+                    'data': default
+                }
+        params.append(param)
+
+    # Get docstring and parse it for extra parameter specs
+    docstring = func_obj.__doc__
+    docstring_params = {}
+    docstring_returns = {}
+    if docstring:
+        docstring = trim_docstring(docstring)
+        config = sphinxcontrib.napoleon.Config(napoleon_use_param=True, napoleon_use_rtype=True)
+        docstring = sphinxcontrib.napoleon.docstring.NumpyDocstring(docstring, config, what='function').lines()
+        docstring = sphinxcontrib.napoleon.docstring.GoogleDocstring(docstring, config, what='function').lines()
+
+        summary = docstring[0]
+        description = ''
+        pattern = re.compile(r'^:(param|returns|type|rtype)(\s+(\w+))?:(.*)$')
+        for line in docstring[1:]:
+            match = pattern.match(line)
+            if match:
+                type_ = match.group(1)
+                name = match.group(3)
+                desc = match.group(4).strip()
+                if type_ == 'param':
+                    param = docstring_params.get(name, {})
+                    param['description'] = desc
+                    docstring_params[name] = param
+                elif type_ == 'type':
+                    param = docstring_params.get(name, {})
+                    param['type'] = desc
+                    docstring_params[name] = param
+                elif type_ == 'returns':
+                    docstring_returns['description'] = desc
+                elif type_ == 'rtype':
+                    docstring_returns['type'] = desc
+            else:
+                description += line + '\n'
+        description = description.strip()
+
+        if len(summary):
+            func.update({'summary': summary})
+
+        if len(description):
+            func.update({'description': description})
+
+        for name, spec in docstring_params.items():
+            for index, param in enumerate(params):
+                if param['name'] == name:
+                    params[index].update(spec)
+                    break
+
+        if len(docstring_returns):
+            func.update({'returns': docstring_returns})
+
+    # Create methods dict
+    # FIXME: should use signature not func_name
+    methods = {}
+    methods[func_name] = {
+        'params': params
+    }
+
+    func = {
+        'name': func_name,
+        'methods': methods
+    }
+
+    return {
+        'type': 'function',
+        'format': 'json',
+        'data': func
+    }
+
+
+def trim_docstring(docstring):
+    """From https://www.python.org/dev/peps/pep-0257/"""
+    if not docstring:
+        return ''
+    # Convert tabs to spaces (following the normal Python rules)
+    # and split into a list of lines:
+    lines = docstring.expandtabs().splitlines()
+    # Determine minimum indentation (first line doesn't count):
+    indent = sys.maxsize
+    for line in lines[1:]:
+        stripped = line.lstrip()
+        if stripped:
+            indent = min(indent, len(line) - len(stripped))
+    # Remove indentation (first line is special):
+    trimmed = [lines[0].strip()]
+    if indent < sys.maxsize:
+        for line in lines[1:]:
+            trimmed.append(line[indent:].rstrip())
+    # Strip off trailing and leading blank lines:
+    while trimmed and not trimmed[-1]:
+        trimmed.pop()
+    while trimmed and not trimmed[0]:
+        trimmed.pop(0)
+    # Return a single string:
+    return '\n'.join(trimmed)
 
 
 def unpack(pkg):
