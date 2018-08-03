@@ -34,8 +34,8 @@ def type(value):
     elif type_ == 'str':
         return 'string'
     elif (
-            isinstance(value, (matplotlib.figure.Figure, matplotlib.artist.Artist)) or
-            (type_ == 'list' and len(value) == 1 and isinstance(value[0], matplotlib.artist.Artist))
+        isinstance(value, (matplotlib.figure.Figure, matplotlib.artist.Artist)) or
+        (type_ == 'list' and len(value) == 1 and isinstance(value[0], matplotlib.artist.Artist))
     ):
         # Use the special 'matplotlib' type to identify plot values that need
         # to be converted to the standard 'image' type during `pack()`
@@ -125,11 +125,11 @@ def unpack(pkg):
     if not isinstance(pkg, dict):
         raise RuntimeError('Package should be an `Object`')
 
-    if not ('type' in pkg and 'format' in pkg and 'data' in pkg):
-        raise RuntimeError('Package should have fields `type`, `format`, `data`')
+    if not ('type' in pkg and 'data' in pkg):
+        raise RuntimeError('Package should have fields `type`, `data`')
 
     type_ = pkg['type']
-    format = pkg['format']
+    format = pkg.get('format', 'json')
     data = pkg['data']
 
     if type_ == 'null':
@@ -146,9 +146,8 @@ def unpack(pkg):
         return json.loads(data)
     elif type_ == 'table':
         if format == 'json':
-            table = json.loads(data, object_pairs_hook=OrderedDict)
             dataframe = pandas.DataFrame()
-            for name, column in table['data'].items():
+            for name, column in data['data'].items():
                 dataframe[name] = column
             return dataframe
         elif format in ('csv', 'tsv'):
