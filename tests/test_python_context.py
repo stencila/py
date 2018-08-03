@@ -68,6 +68,11 @@ def test_compile():
     check_outputs('x()', [])
     check_outputs('x = 1', [{'name': 'x'}])
 
+    # Check input and outputs
+    cell = context.compile('x = 1 + y + z')
+    assert cell['inputs'] == [{'name': 'y'}, {'name': 'z'}]
+    assert cell['outputs'] == [{'name': 'x'}]
+
     # Check syntax errors
     assert context.compile('[1,2')['messages'] == [{
         'type': 'error',

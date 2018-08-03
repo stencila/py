@@ -434,11 +434,13 @@ class CompileAstVisitor(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         # There are various forms of assignment including
-        # attribute, subscript, list, tupe etc.
+        # attribute, subscript, list, tuple etc.
         # We are only interested in name assignment
         for target in node.targets:
             if isinstance(target, ast.Name):
                 self.declared.append(target.id)
+        # Visit the `value` child node
+        self.visit(node.value)
 
     def visit_For(self, node):
         """
